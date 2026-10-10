@@ -1,32 +1,28 @@
 # HANDOFF
 
 ## Done this session
-- P1-9 Part 1 ([BUILD_ORDER](BUILD_ORDER.md)): Tiger pool + `logRoundEvents` callable. No host wiring.
-- `functions/src/lib/tiger.ts`: `TIGER_DATABASE_URL` secret, lazy `pg.Pool` (max 2, TLS verified, connect/statement/query timeout = `TIGER_TIMEOUT_MS`), `tigerFailure()` maps errors to `"timeout" | "error"` and logs without the URL.
-- `functions/src/logRoundEvents.ts`: auth = `meta.hostUid`, then `tigerEnabled`, then reads `rounds/{roundId}` if archived, else live `events`/`results` only while `round.status == "reveal"`. One SQL statement (two data-modifying CTEs, `unnest` arrays, both `ON CONFLICT DO NOTHING`). Only auth errors throw; everything else returns `{ok:false, reason}`.
-- `functions/src/logRoundEvents.test.ts`: live insert, idempotent re-run, bogus-URL timeout, cleanup (session code `SELFTEST`).
-- `functions/package.json`: `pg ^8.23.1`, `@types/pg ^8.23.1`. Exported from `functions/src/index.ts`.
+- P1-9 Part 2 ([BUILD_ORDER](BUILD_ORDER.md)): `web/host/main.ts` only.
+- `logTiger(roundId)`: fire-and-forget `logRoundEvents` call; `ok:false` or any throw adds the id to an in-memory `tigerRetry` set (console warn only).
+- T5: called in `.then()` of the reveal `write()`, only if `round.id`/`status === "reveal"` still holds (a failed write reverts local state, so no call). Timer path never awaits it.
+- `newRound()`: if `tigerRetry.delete(round.id)` then `logTiger` once more, before the archive read.
+- Part 1 (callable, `lib/tiger.ts`, test) already committed.
 
 ## In progress / next
-- P1-9 Part 2: `web/host/main.ts` calls `logRoundEvents` at T5 (fire-and-forget) and retries once at NEW_ROUND if `ok:false`.
-- Then the BUILD_ORDER verify: a bot round where `SELECT count(*) FROM round_events WHERE round_id = ...` equals the RTDB event count.
+- Run the manual check below, then P1-10 (pulse panel, `sessionPulse`).
+- Manual check: `firebase deploy --only functions:logRoundEvents`; set `/config/flags/tigerEnabled = true`; open `/host` and `/screen` for the session; Add 3 bots; Start; wait for reveal. Then in Tiger run `SELECT count(*) FROM round_events WHERE session_code = '<code>' AND round_id = 'r1';` and compare with the child count of RTDB `sessions/<code>/events` (at reveal) or `sessions/<code>/rounds/r1/events` (after New round). Also set `tigerEnabled=false` and confirm reveal timing is unchanged.
 
 ## Verify status
-- typecheck, lint, `npm test`, `npm run build`, `functions` `tsc` all pass.
-- Self-check `npx tsx --env-file=functions/.secret.local functions/src/logRoundEvents.test.ts`: inserted 4, then 0; bogus URL `{ok:false, reason:"timeout"}` in ~5.0 s; cleanup deleted 4 events + 1 round.
-- Not deployed. Deploy: `firebase deploy --only functions:logRoundEvents`.
+- typecheck, lint, `npm test`, `npm run build`: pass. No secrets, brands, or live-AI paths added. Manual Tiger check not run.
 
 ## Decisions / docs
-- No new D-nn. Tiger is TimescaleDB 2.30.2 on Postgres 18.6; `WITH (tsdb.hypertable)` worked (`round_events` is a hypertable), so the `create_hypertable` fallback in DATA_SCHEMA §8 isn't needed.
+- No new D-nn; no doc conflicts found.
 
 ## Blockers / open items
-- `/config/flags/tigerEnabled` must be `true` in RTDB or the callable returns `disabled`.
-- The deployed `TIGER_DATABASE_URL` secret (v1) may be the same password-less string the local file had. Re-set it if the first deployed call logs a SASL/password error.
+- `tigerEnabled` must be `true`; the deployed `TIGER_DATABASE_URL` secret may need re-setting (SASL/password error in logs).
 - Carried over: real-phone LAN run, P1-2 audio, `meta.screenUid`, custom-domain auth check.
 
 ## Gotchas
-- The `rounds` row is write-once (`ON CONFLICT DO NOTHING`). Part 2 must call after the host writes `results.audience` and `combined` at reveal, or those columns stay null forever.
-- Worst-case latency is connect 5 s + statement 5 s = 10 s (function timeout is 15 s). Not a single 5 s budget.
-- `sslmode=require` makes `pg` print a security warning (it treats it as `verify-full`). Changing the URL to `sslmode=verify-full` silences it.
-- Uniqueness is `(session_code, round_id, t_ms, role, time)`: two events with the same role in the same ms collapse into one row.
+- Retry state is memory-only: a host refresh forgets it ("Re-sync Tiger" button is the upgrade path, out of scope).
+- Uniqueness is `(session_code, round_id, t_ms, role, time)`: same-role events in the same ms collapse, so counts can be lower than RTDB in rare bot cases.
+- If the host refreshes mid-reveal, T5 does not re-run (status already reveal), so no call happens for that round.
 - Test data still in RTDB session `M2DS`.

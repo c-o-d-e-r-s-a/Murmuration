@@ -4,10 +4,10 @@ import {
   DEFAULT_DURATION_MS, DURATIONS_MS, HOST_TICK_MS, MIN_CREATORS, NICK_MAX, NICK_MIN, RATING_EXTEND_STEP_MS, RATING_MIN_MS,
   SESSION_CODE_ALPHABET, SESSION_CODE_LEN,
 } from "../../shared/contracts";
-import type { Choices, Player, Rating, Results, Role, Round, Scene, SessionMeta } from "../../shared/contracts";
+import type { Choices, LogRoundEventsRequest, LogRoundEventsResponse, Player, Rating, Results, Role, Round, Scene, SessionMeta } from "../../shared/contracts";
 import { BUNDLED_SCENES } from "../../shared/sceneLoader";
 import { audienceScore, authorScore, combined } from "../../shared/scoring";
-import { db, onValue, ref, serverNow, serverTimestamp, set, signIn, update } from "../lib/firebase";
+import { db, functions, httpsCallable, onValue, ref, serverNow, serverTimestamp, set, signIn, update } from "../lib/firebase";
 import { botPlan, drawPrompt, due, ratingCap, rotate } from "./machine";
 
 // B2 lobby (session, QR, scene, duration, players, slots, bots) + B4 state machine T1–T8 (ROUND_STATE_MACHINE §2, D-10).
@@ -170,6 +170,7 @@ function mount(code: string) {
   function newRound() {
     if (round?.status !== "reveal" || busy) return;
     busy = true;
+    if (tigerRetry.delete(round.id)) logTiger(round.id); // once only; a second failure re-adds the id but nothing retries it
     get(ref(db, `${base}/events`)).then((s) => {
       const playersSnapshot = Object.fromEntries(Object.entries(players).map(([uid, p]) => [uid, { nick: p.nick, slot: p.slot ?? null }]));
       const next = rotate(players, round!.slots ?? {}, SLOT_ROLES);
@@ -217,11 +218,20 @@ function mount(code: string) {
       write({ "round/ratingEndsAt": Math.min(r.ratingEndsAt! + RATING_EXTEND_STEP_MS, ratingCap(r)) });
     } else if (step === "T5") {
       const audience = audienceScore(Object.values(ratings));
+      const id = r.id;
       write({
         "round/status": "reveal", "round/statusVersion": v(),
         "results/audience": audience, "results/combined": combined(results.author?.score, results.ai?.score, audience.score),
-      });
+      }).then(() => { if (round?.id === id && round.status === "reveal") logTiger(id); });
     }
+  }
+
+  /** Tiger mirror (D-33): fire-and-forget; failures only in memory (lost on host refresh) and retried once at NEW_ROUND. */
+  const tigerRetry = new Set<string>();
+  function logTiger(roundId: string) {
+    httpsCallable<LogRoundEventsRequest, LogRoundEventsResponse>(functions, "logRoundEvents")({ sessionCode: code, roundId })
+      .then((r) => { if (!r.data.ok) tigerRetry.add(roundId); })
+      .catch((e) => { tigerRetry.add(roundId); console.warn("logRoundEvents", e); });
   }
 
   // Bots (D-29): first pick at ~5 s, then 1–2 changes. lastT skips picks already past when the host reloads mid-round.
