@@ -1,13 +1,13 @@
 import QRCode from "qrcode";
 import { RATING_MAX_MS, ROLES, SETTLE_MS, SNAPSHOT_H, SNAPSHOT_JPEG_QUALITY, SNAPSHOT_W } from "../../shared/contracts";
-import type { Choices, Player, Results, Role, Round } from "../../shared/contracts";
+import type { Choices, JudgeRoundRequest, JudgeRoundResponse, Player, Results, Role, Round } from "../../shared/contracts";
 import { BUNDLED_SCENES } from "../../shared/sceneLoader";
-import { db, onValue, ref, serverNow, signIn } from "../lib/firebase";
+import { db, functions, httpsCallable, onValue, ref, runTransaction, serverNow, serverTimestamp, signIn } from "../lib/firebase";
 import { resolveTarget } from "../lib/renderer/params";
 import { mountRenderer } from "../lib/renderer/sketch";
 
 // B5: passive /screen (D-10). Subscribes, renders the colour wash from choices, shows lobby/live/lock/reveal chrome.
-// Solo scope (BUILD_ORDER §8): three dials. Scores/reveal numerals are P1-4; snapshot upload (T4a) is P1-1.
+// Solo scope (BUILD_ORDER §8): three dials. Its only writes: the judgeRequestedAt claim and the judgeRound call (T4a).
 const DIALS: Role[] = ["palette", "form", "motion"];
 const NAME: Record<Role, string> = { palette: "Palette", form: "Form", motion: "Motion", texture: "Texture", mood: "Mood" };
 
@@ -41,7 +41,7 @@ async function start() {
   let seenRender = false; // first render already in reveal (refresh): show final scores, no catch-up animation
   const shown = new Map<string, number | null>(); // `${round}:${key}` -> value already counted up
   let mounted: (ReturnType<typeof mountRenderer> & { key: string }) | null = null;
-  let snapshot: string | null = null; // base64 JPEG of the locked frame (D-21), in memory until P1-1
+  let snapshot: string | null = null; // base64 JPEG of the locked frame (D-21)
 
   // CONTRACTS §5: t = serverNow() - startsAt clamped to the round; exactly durationMs once locked. Lobby: renderer's own clock.
   const clock = () => {
@@ -49,7 +49,20 @@ async function start() {
     return round.status === "live" ? Math.max(0, Math.min(round.durationMs, serverNow() - round.startsAt)) : round.durationMs;
   };
 
-  // T4a stub: grab the first full frame of the locked mount, scaled to SNAPSHOT_W x SNAPSHOT_H.
+  // T4a, once settle has elapsed: whoever wins judgeRequestedAt (null -> server time) sends the frame. Any error means the
+  // function already wrote the fallback or the host's 25 s cap will reveal without it (CONTRACTS §7); never retry.
+  async function judge(roundId: string, lockedAt: number, jpeg: string) {
+    await new Promise((r) => setTimeout(r, lockedAt + SETTLE_MS - serverNow()));
+    if (round?.id !== roundId || (round.status !== "locked" && round.status !== "rating")) return;
+    try {
+      const { committed } = await runTransaction(ref(db, `${base}/results/judgeRequestedAt`), (v) => (v == null ? serverTimestamp() : undefined));
+      if (committed) await httpsCallable<JudgeRoundRequest, JudgeRoundResponse>(functions, "judgeRound")({ sessionCode: code, roundId, snapshotJpegBase64: jpeg });
+    } catch (e) {
+      console.warn("judgeRound", e);
+    }
+  }
+
+  // Grab the first full frame of the locked mount, scaled to SNAPSHOT_W x SNAPSHOT_H.
   function capture(m: typeof mounted) {
     if (m !== mounted) return;
     if (!m.stats.frames) return void requestAnimationFrame(() => capture(m));
@@ -57,7 +70,7 @@ async function start() {
     c.getContext("2d")!.drawImage($<HTMLCanvasElement>("#stage canvas"), 0, 0, SNAPSHOT_W, SNAPSHOT_H);
     const url = c.toDataURL("image/jpeg", SNAPSHOT_JPEG_QUALITY);
     snapshot = url.slice(url.indexOf(",") + 1);
-    // TODO(P1-1): T4a — if results/judgeRequestedAt is null, claim it (transaction) and call judgeRound({ sessionCode, roundId, snapshotJpegBase64: snapshot }).
+    judge(round!.id, round!.lockedAt ?? 0, snapshot);
     if (!debug) return;
     console.log("snapshot", { width: c.width, height: c.height, kb: +((snapshot.length * 3) / 4 / 1024).toFixed(1), base64Length: snapshot.length });
     const a = Object.assign(document.querySelector<HTMLAnchorElement>("#snap") ?? document.body.appendChild(document.createElement("a")), {
@@ -167,9 +180,9 @@ async function start() {
     countUp(num("audience"), "audience", results.audience?.score, 1000, instant);
     countUp(num("combined"), "combined", results.combined, 1700, instant);
     cap("author").textContent = results.author ? "" : "no picks";
-    cap("ai").textContent = results.ai ? [results.ai.comment, results.ai.fallback ? "(offline judge)" : ""].filter(Boolean).join(" ") : "judge offline"; // ponytail: results.ai is not written until P1-1
+    cap("ai").textContent = results.ai ? [results.ai.comment, results.ai.fallback ? "(offline judge)" : ""].filter(Boolean).join(" ") : "judge offline";
     cap("audience").textContent = results.audience?.count ? `from ${results.audience.count} ratings` : "no ratings";
-    const vs = $(".verdict"); // ponytail: results.verdict.script is not written until P1-1; hidden until present
+    const vs = $(".verdict"); // hidden until results.verdict.script arrives
     vs.textContent = results.verdict?.script ?? "";
     vs.classList.toggle("has", !!results.verdict?.script);
   }

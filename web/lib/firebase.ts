@@ -5,10 +5,12 @@ import {
   onDisconnect,
   onValue,
   ref,
+  runTransaction,
   serverTimestamp,
   set,
   update,
 } from "firebase/database";
+import { getFunctions, httpsCallable } from "firebase/functions";
 
 // Web config is public by design (not a secret); access is enforced by rules.
 const firebaseConfig = {
@@ -25,6 +27,7 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getDatabase(app);
+export const functions = getFunctions(app);
 
 // Offset between server and local clock; stays 0 until .info/serverTimeOffset reports.
 let offset = 0;
@@ -53,4 +56,4 @@ export function trackPresence(code: string, uid: string) {
   });
 }
 
-export { ref, onValue, set, update, serverTimestamp };
+export { ref, onValue, set, update, serverTimestamp, runTransaction, httpsCallable };

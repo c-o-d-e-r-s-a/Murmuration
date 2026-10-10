@@ -12,7 +12,7 @@ export function loadScene(raw: unknown): Scene {
   const fail = (msg: string): never => {
     throw new Error(`scene "${id}": ${msg}`);
   };
-  if (!id || !scene.title || !scene.options || !scene.baseArt) fail("missing id, title, options or baseArt");
+  if (!id || !scene.title || !scene.description || !scene.options || !scene.baseArt) fail("missing id, title, description, options or baseArt");
   if (scene.kind !== "demo" && scene.kind !== "custom") fail(`bad kind "${scene.kind}"`);
 
   const custom = scene.kind === "custom";

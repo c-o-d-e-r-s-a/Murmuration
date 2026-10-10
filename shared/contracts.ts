@@ -206,6 +206,7 @@ export type Scene = {
   id: string;
   title: string;
   author: string;
+  description: string; // generic words for AI prompts; AI never sees `title` (D-40)
   kind: "demo" | "custom";
   version: 1;
   baseArt: {
