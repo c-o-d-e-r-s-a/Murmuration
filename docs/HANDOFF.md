@@ -1,24 +1,26 @@
 # HANDOFF
 
 ## Done this session
-- A1 ([BUILD_ORDER](BUILD_ORDER.md)), solo scope (§8): `shared/presets.ts` (lane A) with `PRESETS`, `NEUTRAL_PRESET_ID`, `getPreset(role, id)` (unknown/wrong-role id -> neutral), `stripProtected(overrides)`, `presetParams(role, id, overrides)`.
-- 4 presets each for palette (`pal-sodium/neon/dawn/bruise`), form (`form-fog/steam/sparks/dust`), motion (`motion-pulse/sway/flicker/drift`) + a neutral per role; texture/mood are neutral only (`tex-neutral`, `mood-neutral`).
-- Photosensitivity: rate/area clamped at build; overrides can never set `motionRateHz`/`motionArea`.
-- Check: `shared/presets.test.ts` (run `npx tsx shared/presets.test.ts`).
+- A2 ([BUILD_ORDER](BUILD_ORDER.md)), solo scope (§8), color wash only. Lane A.
+- `web/lib/renderer/params.ts`: `resolveTarget(options, choices)` (scene options + choices -> full `RenderParams`, unfilled/unknown -> neutral via `presetParams`), `toCurrent(target)` (snap), `ease(cur, target, dtMs)` (exponential, `EASE_NUMERIC_MS` numerics, `EASE_PALETTE_MS` colors as RGB; mutates, no allocations besides hex parse).
+- `web/lib/renderer/sketch.ts`: `mountRenderer(parent, {background, swatches?})` -> `{setTarget}`; p5 instance, DPR cap 1.5, 16:9 fit to parent; draws background + `colors[0]` wash at `washOpacity`; `swatches` draws the 4 eased colors (dev aid).
+- `web/dev/main.ts`: palette buttons + washOpacity slider. **Mock**: options built from `PRESETS` (id = presetId) until `shared/scenes` + `sceneLoader` exist; background mocked `#777777`.
+- Check: `web/lib/renderer/params.test.ts` (`npx tsx web/lib/renderer/params.test.ts`).
 
 ## Next
-- A2: `RenderParams` resolve + easing loop in `web/lib/renderer/` (use `presetParams`). Also content/loader: `shared/sceneLoader.ts` should call `stripProtected` and reject unknown `presetId` via `PRESETS`.
+- A3 base-art layer in `web/lib/renderer/sketch.ts` (pass the scene in `mountRenderer`, replace `opts.background` with `scene.baseArt.background`). Also `shared/sceneLoader.ts` (stripProtected + reject unknown presetId).
 
 ## Verify status
-- typecheck, lint, test, build re-run after a one-line type fix (see session summary).
+- typecheck pass, lint pass (0 warnings), test pass (scoring only), build pass (dev chunk >500 kB warning from p5, harmless). Renderer self-check passes manually.
 
 ## Decisions / docs
-- None new.
+- None new. Enums/moodWord snap instead of crossfade (ponytail note in `ease`; A4 adds the weight). Colors lerp in sRGB, not perceptual (ponytail note).
 
 ## Blockers / open items
-- `package.json` `test` only runs `scoring.test.ts`; presets test is not wired in (not allowed to edit). Suggest `tsx shared/scoring.test.ts && tsx shared/presets.test.ts`.
+- `package.json` `test` runs only `scoring.test.ts`; presets and renderer self-checks are not wired in (not allowed to edit). Suggest `tsx shared/scoring.test.ts && tsx shared/presets.test.ts && tsx web/lib/renderer/params.test.ts`.
 
 ## Gotchas
-- Neutral `mood` has an empty `moodWord`; renderer must skip the watermark when empty.
-- Neutral `motion` has `motionArea: 0` / rate 0 (still).
+- `ease` uses p5 `deltaTime` (wall clock); fine for smoothing, but A4's seeded motion must use round time `t`, not `deltaTime`.
+- First `setTarget` snaps current to target (screen refresh rule, ROUND_STATE_MACHINE §5); later calls ease.
+- Neutral mood `moodWord` is empty; neutral motion is still (rate/area 0).
 - Prod RTDB still has `sessions/TEST` from B1 smoke test.
