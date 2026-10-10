@@ -114,7 +114,7 @@ function mount(code: string) {
     el("p", {}, startBtn, " ", nextBtn, " ", resetBtn),
     scoresEl,
     errEl,
-    el("p", {}, el("button", { textContent: "Add 3 bots", onclick: () => addBots(3) }), " ", newBtn),
+    el("p", {}, el("button", { textContent: "Add 3 bots", onclick: () => addBots(3) }), " ", el("button", { textContent: "Add 10 spectator bots", onclick: () => addBots(10, true) }), " ", newBtn),
     count,
     list,
   );
@@ -219,7 +219,17 @@ function mount(code: string) {
   const botPlans = new Map<Role, number[]>();
   let planRound = "";
   let lastT = 0;
+  const voted = new Set<string>(); // bot uids already written this rating window (ratings listener lags)
   function tickBots(now: number) {
+    if (round?.status === "rating") { // bot Spectators vote 3–5 (§5), spread over the window so counts climb
+      for (const [uid, p] of Object.entries(players)) {
+        if (!p.isBot || p.removed || p.role !== "spectator" || ratings[uid] != null || voted.has(uid) || Math.random() > 0.3) continue;
+        voted.add(uid);
+        set(ref(db, `${base}/ratings/${uid}`), 3 + Math.floor(Math.random() * 3));
+      }
+      return;
+    }
+    voted.clear();
     const sc = scene();
     if (round?.status !== "live" || !round.startsAt || !sc) return;
     const t = now - round.startsAt;
@@ -260,13 +270,15 @@ function mount(code: string) {
     sceneSel.disabled = durSel.disabled = s !== "lobby";
   }
 
-  setInterval(() => {
+  // Tick from a worker: a hidden /host tab (host + /screen share one browser) has its main-thread timers throttled to ~1/min.
+  const ticker = new Worker(URL.createObjectURL(new Blob([`setInterval(() => postMessage(0), ${HOST_TICK_MS})`])));
+  ticker.onmessage = () => {
     const now = serverNow();
     renderRound(now);
     if (!round || busy || loaded.size < 6) return;
     tickBots(now);
     tickMachine(now);
-  }, HOST_TICK_MS);
+  };
 
   // Writes: assign (or clear) a slot. One multi-path update keeps round.slots and players/*/slot in step.
   function assign(uid: string, role: Role | "") {
@@ -294,9 +306,9 @@ function mount(code: string) {
     update(ref(db, base), up);
   }
 
-  function addBots(n: number) {
+  function addBots(n: number, spectatorsOnly = false) {
     const up: Record<string, unknown> = {};
-    const free = SLOT_ROLES.filter((r) => !round?.slots?.[r]);
+    const free = spectatorsOnly ? [] : SLOT_ROLES.filter((r) => !round?.slots?.[r]);
     let i = 1;
     for (let b = 0; b < n; b++) {
       while (players[`bot_${i}`] && !players[`bot_${i}`].removed) i++;
