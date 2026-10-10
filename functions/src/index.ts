@@ -6,3 +6,4 @@ setGlobalOptions({maxInstances: 10});
 initializeApp();
 
 export {judgeRound} from "./judgeRound";
+export {logRoundEvents} from "./logRoundEvents";

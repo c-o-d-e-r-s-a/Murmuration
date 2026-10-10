@@ -1,26 +1,32 @@
 # HANDOFF
 
 ## Done this session
-- P1-5 (solo, 3 slots): role rotation on New round + late joiners ([BUILD_ORDER](BUILD_ORDER.md)).
-- `web/host/machine.ts`: pure `rotate(players, slots, roles)`. `web/host/main.ts` `newRound()` (T6 only) writes `round/slots`, `players/*/{slot,role}` and the Creators' new `queuePos` in the same multi-path update as the archive.
-- `web/host/machine.test.ts`: asserts for 6 players/2 rounds, 8/3 rounds, late joiner, humans-before-bots, removed skipped.
-- Docs: D-42 (T7 Reset keeps slots and queue); ROUND_STATE_MACHINE §2 T7 row fixed.
+- P1-9 Part 1 ([BUILD_ORDER](BUILD_ORDER.md)): Tiger pool + `logRoundEvents` callable. No host wiring.
+- `functions/src/lib/tiger.ts`: `TIGER_DATABASE_URL` secret, lazy `pg.Pool` (max 2, TLS verified, connect/statement/query timeout = `TIGER_TIMEOUT_MS`), `tigerFailure()` maps errors to `"timeout" | "error"` and logs without the URL.
+- `functions/src/logRoundEvents.ts`: auth = `meta.hostUid`, then `tigerEnabled`, then reads `rounds/{roundId}` if archived, else live `events`/`results` only while `round.status == "reveal"`. One SQL statement (two data-modifying CTEs, `unnest` arrays, both `ON CONFLICT DO NOTHING`). Only auth errors throw; everything else returns `{ok:false, reason}`.
+- `functions/src/logRoundEvents.test.ts`: live insert, idempotent re-run, bogus-URL timeout, cleanup (session code `SELFTEST`).
+- `functions/package.json`: `pg ^8.23.1`, `@types/pg ^8.23.1`. Exported from `functions/src/index.ts`.
 
 ## In progress / next
-- Next per [§8](BUILD_ORDER.md): bots/refresh test, P1-9 Tiger mirror. First do the manual rotation check against a real session (steps in the chat report); not run against RTDB yet.
+- P1-9 Part 2: `web/host/main.ts` calls `logRoundEvents` at T5 (fire-and-forget) and retries once at NEW_ROUND if `ok:false`.
+- Then the BUILD_ORDER verify: a bot round where `SELECT count(*) FROM round_events WHERE round_id = ...` equals the RTDB event count.
 
 ## Verify status
-- `/verify`: typecheck, lint, `npm test`, build all pass; `npx tsx web/host/machine.test.ts` ok.
-- Rules emulator not run (no Java); rules unchanged. Host `queuePos` write is allowed by the existing `queuePos` validate (host uid), but not exercised live.
+- typecheck, lint, `npm test`, `npm run build`, `functions` `tsc` all pass.
+- Self-check `npx tsx --env-file=functions/.secret.local functions/src/logRoundEvents.test.ts`: inserted 4, then 0; bogus URL `{ok:false, reason:"timeout"}` in ~5.0 s; cleanup deleted 4 events + 1 round.
+- Not deployed. Deploy: `firebase deploy --only functions:logRoundEvents`.
 
 ## Decisions / docs
-- D-42 added. Late joiners already sort last (`/play` and `addBots` write `queuePos: serverTimestamp()`); confirmed, no change.
+- No new D-nn. Tiger is TimescaleDB 2.30.2 on Postgres 18.6; `WITH (tsdb.hypertable)` worked (`round_events` is a hypertable), so the `create_hypertable` fallback in DATA_SCHEMA §8 isn't needed.
 
 ## Blockers / open items
-- Carried over: real-phone LAN run, P1-2 audio, `meta.screenUid`, custom-domain auth check (see git history of this file).
+- `/config/flags/tigerEnabled` must be `true` in RTDB or the callable returns `disabled`.
+- The deployed `TIGER_DATABASE_URL` secret (v1) may be the same password-less string the local file had. Re-set it if the first deployed call logs a SASL/password error.
+- Carried over: real-phone LAN run, P1-2 audio, `meta.screenUid`, custom-domain auth check.
 
 ## Gotchas
-- Creators go to `max+1..+3`, where max includes any late joiner's timestamp, so a late joiner queues ahead of the Creators who just played, behind everyone already waiting.
-- Bots rank after all humans; with ≥3 humans, bot Creators are rotated out on New round. With <3 humans, bots fill the gap.
-- Not done (out of scope): host "Assign to" moving `queuePos` to front (§4 override), skipping disconnected players, P1-10.
+- The `rounds` row is write-once (`ON CONFLICT DO NOTHING`). Part 2 must call after the host writes `results.audience` and `combined` at reveal, or those columns stay null forever.
+- Worst-case latency is connect 5 s + statement 5 s = 10 s (function timeout is 15 s). Not a single 5 s budget.
+- `sslmode=require` makes `pg` print a security warning (it treats it as `verify-full`). Changing the URL to `sslmode=verify-full` silences it.
+- Uniqueness is `(session_code, round_id, t_ms, role, time)`: two events with the same role in the same ms collapse into one row.
 - Test data still in RTDB session `M2DS`.
