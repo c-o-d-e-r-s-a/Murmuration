@@ -149,6 +149,7 @@ async function start() {
     if (status === "reveal") renderScores(!seenRender);
     else ui.classList.remove("instant");
     seenRender = true;
+    syncVoice();
     tick();
   }
 
@@ -185,6 +186,26 @@ async function start() {
     const vs = $(".verdict"); // hidden until results.verdict.script arrives
     vs.textContent = results.verdict?.script ?? "";
     vs.classList.toggle("has", !!results.verdict?.script);
+  }
+
+  // Verdict audio at reveal (D-15, RISKS §2). One try per round+url; if autoplay is blocked, the Play button is the gesture.
+  const voice = new Audio();
+  const playBtn = $<HTMLButtonElement>(".play-verdict");
+  let voiceKey = "";
+  playBtn.onclick = () => void voice.play().then(() => (playBtn.hidden = true)).catch(() => {});
+  function syncVoice() {
+    const url = round?.status === "reveal" ? results.verdict?.audioUrl : null;
+    if (!url) {
+      if (voiceKey) voice.pause();
+      voiceKey = "";
+      playBtn.hidden = true;
+      return;
+    }
+    const key = `${round!.id}|${url}`;
+    if (key === voiceKey) return;
+    voiceKey = key;
+    voice.src = url;
+    voice.play().then(() => (playBtn.hidden = true), () => (playBtn.hidden = false));
   }
 
   const sub = <T>(path: string, set: (v: T) => void) =>

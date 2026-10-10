@@ -90,7 +90,9 @@
       .combined { text-align: center; opacity: 0; }
       .combined .num { font-size: clamp(120px, 10.4vw, 280px); font-weight: 800; color: var(--accent); }
       .verdict { position: fixed; left: 5vw; width: 50vw; bottom: 16vh; color: var(--text-primary); font-size: var(--fs-label); text-shadow: 0 1px 6px var(--ink-0); display: none; }
-      .verdict.has { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
+      .play-verdict { position: fixed; left: 5vw; bottom: 8vh; z-index: 5; padding: 1vh 2vw; font: inherit; font-size: var(--fs-label); color: var(--text-primary); background: var(--ink-0); border: 1px solid var(--text-primary); border-radius: 999px; cursor: pointer; }
+      .play-verdict[hidden] { display: none; }
+      .verdict.has { display: block; max-height: 28vh; overflow-y: auto; }
       #ui[data-s="reveal"] .sc { animation: stamp 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: calc(var(--i) * 400ms); }
       #ui[data-s="reveal"] .combined { animation: slam 260ms cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: 1600ms; }
       #ui.instant .sc, #ui.instant .combined { animation-duration: 1ms; animation-delay: 0s; }
@@ -125,6 +127,7 @@
         <div class="sc" style="--i: 2" data-k="audience"><span class="small">Audience</span><span class="num">--</span><span class="cap"></span></div>
         <div class="combined" data-k="combined"><div class="num">--</div><div class="small">Combined</div></div>
         <div class="verdict"></div>
+        <button class="play-verdict" hidden>&#9654; Play verdict</button>
       </div>
       <div class="judging">The room is judging <i></i><i></i><i></i></div>
     </div>
