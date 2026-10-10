@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { ROLES } from "./contracts";
-import { PRESETS } from "./presets";
+import { NEUTRAL_PRESET_ID, PRESETS } from "./presets";
 import { BUNDLED_SCENES, loadScene } from "./sceneLoader";
 import rushHour from "./scenes/rush-hour.json";
 
@@ -15,12 +15,28 @@ for (const r of ROLES) {
 }
 assert.ok(s.prompts.length >= 8 && s.prompts.length <= 10);
 
-// palette/form/motion use each non-neutral preset once
-for (const r of ["palette", "form", "motion"] as const) {
-  const ids = s.options[r].map((o) => o.presetId);
-  assert.equal(new Set(ids).size, 4);
-  for (const id of ids) assert.equal(PRESETS[id].role, r);
+// all three bundled scenes load with 4 options per role, short labels, 8-10 prompts, ranks 10/7/4/1
+assert.deepEqual(BUNDLED_SCENES.map((b) => b.id), ["rush-hour", "diner", "vigilante"]);
+for (const b of BUNDLED_SCENES) {
+  for (const r of ROLES) {
+    assert.deepEqual(b.options[r].map((o) => o.authorScore).sort((x, y) => y - x), [10, 7, 4, 1]);
+    for (const o of b.options[r]) assert.ok(o.label.length <= 18, o.label);
+  }
+  assert.ok(b.prompts.length >= 8 && b.prompts.length <= 10, b.id);
 }
+
+// palette/form/motion use each non-neutral preset once; texture/mood stay neutral (solo plan)
+for (const b of BUNDLED_SCENES) {
+  for (const r of ["palette", "form", "motion"] as const) {
+    const ids = b.options[r].map((o) => o.presetId);
+    assert.equal(new Set(ids).size, 4, `${b.id} ${r}`);
+    for (const id of ids) assert.equal(PRESETS[id].role, r);
+  }
+  for (const r of ["texture", "mood"] as const) for (const o of b.options[r]) assert.equal(o.presetId, NEUTRAL_PRESET_ID[r], o.id);
+}
+
+// D-40: brand names may appear only in `title`
+for (const b of BUNDLED_SCENES) assert.doesNotMatch(JSON.stringify({ ...b, title: "" }), /waffle house|batman|gotham|bat-?signal/i, b.id);
 
 // protected override keys are stripped, others kept
 const a = clone();

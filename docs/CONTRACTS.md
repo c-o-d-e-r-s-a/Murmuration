@@ -215,9 +215,9 @@ Fail closed: any error → { approved: false, category: "error", reason: "Modera
 ### Gemini (judge + verdict script in one call) — D-22
 Docs: [image understanding](https://ai.google.dev/gemini-api/docs/image-understanding) (inline base64 image, 20 MB total limit), [structured outputs](https://ai.google.dev/gemini-api/docs/structured-output) (JSON Schema response), [models](https://ai.google.dev/gemini-api/docs/models) (`gemini-3.8-flash`, `gemini-3.5-flash-lite`).
 
-Input facts (never nicknames, D-24):
+Input facts (never nicknames, D-24; `scene` is the generic `scene.description`, never `scene.title`, D-40):
 ```json
-{ "scene": "Atlanta Rush Hour", "prompt": "Make the gridlock feel almost peaceful",
+{ "scene": "a gridlocked highway at dusk", "prompt": "Make the gridlock feel almost peaceful",
   "choices": { "palette": "Peach Sunset", "form": "Low Fog", "motion": "Slow Drift" },
   "unfilledRoles": ["texture", "mood"] }
 ```
@@ -258,7 +258,7 @@ const interaction = await ai.interactions.create({
 // interaction.output_image.data (base64) → Buffer → Storage reimagined/{code}/{roundId}.png
 ```
 Prompt template (generic words only; no character or brand names; never nicknames, D-24):
-> Re-render this exact artwork as a finished {moodWord} painting of {scene title}. Keep the composition, every shape's position and size, and the {palette label} colors. Do not add text, people, logos, or new objects.
+> Re-render this exact artwork as a finished {moodWord} painting of {scene description}. Keep the composition, every shape's position and size, and the {palette label} colors. Do not add text, people, logos, or new objects.
 
 No strength knob: if the output drifts, tighten the prompt ("preserve the original composition" is the documented style-transfer phrasing), then try the fallback model. Every output carries an invisible SynthID watermark. Tune once with a real locked snapshot at hour ~20.
 

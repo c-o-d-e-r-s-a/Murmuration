@@ -3,6 +3,8 @@ import { AUTHOR_RANK_SCORES, OPTIONS_PER_ROLE, OPTION_ID_MAX, OPTION_LABEL_MAX, 
 import type { Option, Scene } from "./contracts";
 import { PRESETS, stripProtected } from "./presets";
 import rushHour from "./scenes/rush-hour.json";
+import diner from "./scenes/diner.json";
+import vigilante from "./scenes/vigilante.json";
 
 export function loadScene(raw: unknown): Scene {
   const scene = structuredClone(raw) as Scene;
@@ -40,4 +42,4 @@ export function loadScene(raw: unknown): Scene {
 }
 
 /** Bundled scenes for the host picker. */
-export const BUNDLED_SCENES: Scene[] = [loadScene(rushHour)];
+export const BUNDLED_SCENES: Scene[] = [loadScene(rushHour), loadScene(diner), loadScene(vigilante)];

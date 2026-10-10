@@ -1,0 +1,221 @@
+{
+  "id": "vigilante",
+  "title": "Batman in Atlanta",
+  "author": "Team Murmuration",
+  "description": "a caped vigilante over a city skyline",
+  "kind": "demo",
+  "version": 1,
+  "baseArt": {
+    "viewBox": [
+      0,
+      0,
+      1920,
+      1080
+    ],
+    "background": "#0a0c13",
+    "shapes": [
+      {
+        "d": "M0 716 L70 716 L70 900 L0 900 Z M60 736 L150 736 L150 900 L60 900 Z M140 704 L210 704 L210 900 L140 900 Z M200 728 L300 728 L300 900 L200 900 Z M290 712 L370 712 L370 900 L290 900 Z M360 740 L480 740 L480 900 L360 900 Z M470 720 L560 720 L560 900 L470 900 Z M550 730 L630 730 L630 900 L550 900 Z M630 650 L720 650 L720 900 L630 900 Z M860 500 L930 500 L930 900 L860 900 Z M935 455 L1001 455 L1001 900 L935 900 Z M1004 520 L1060 520 L1060 900 L1004 900 Z M1172 540 L1236 540 L1236 900 L1172 900 Z M1236 480 L1270 480 L1270 900 L1236 900 Z M1360 545 L1436 545 L1436 900 L1360 900 Z M1440 600 L1510 600 L1510 900 L1440 900 Z M1505 560 L1565 560 L1565 900 L1505 900 Z M1560 620 L1650 620 L1650 900 L1560 900 Z M1650 580 L1720 580 L1720 900 L1650 900 Z M1720 640 L1830 640 L1830 900 L1720 900 Z M1830 600 L1930 600 L1930 900 L1830 900 Z M716 900 L716 410 C716 380 800 380 800 410 L800 900 Z M756 352 L760 352 L760 392 L756 392 Z M746 392 L770 392 L770 398 L746 398 Z M1058 900 L1058 420 L1068 420 L1068 404 L1078 404 L1078 388 L1100 344 L1122 388 L1122 404 L1132 404 L1132 420 L1142 420 L1142 900 Z M1098 262 L1102 262 L1102 352 L1098 352 Z M1272 900 L1272 452 L1306 396 L1340 452 L1340 900 Z M1268 432 L1274 432 L1274 458 L1268 458 Z M1338 432 L1344 432 L1344 458 L1338 458 Z M1304 372 L1308 372 L1308 400 L1304 400 Z",
+        "fill": "#151827"
+      },
+      {
+        "d": "M1577.5 701.6 L868.4 319 L939.6 205 L1594.5 674.4 Z M808 262 A96 96 0 1 1 1000 262 A96 96 0 1 1 808 262 Z",
+        "fill": "#fff3d610"
+      },
+      {
+        "d": "M1582.8 693.1 L888.7 286.4 L919.3 237.6 L1589.2 682.9 Z M846.4 262 A57.599999999999994 57.599999999999994 0 1 1 961.6 262 A57.599999999999994 57.599999999999994 0 1 1 846.4 262 Z",
+        "fill": "#fff3d610"
+      },
+      {
+        "d": "M700 1080 L700 812 L760 812 L760 790 L860 790 L860 820 L980 820 L980 776 L1010 776 L1010 760 L1060 760 L1060 776 L1120 776 L1120 834 L1250 834 L1250 800 L1380 800 L1380 1080 Z M880 798 L930 798 L930 820 L880 820 Z M1270 780 L1314 780 L1314 800 L1270 800 Z",
+        "fill": "#0c0e17"
+      },
+      {
+        "d": "M1380 1080 L1380 744 L1400 744 L1400 732 L1920 732 L1920 1080 Z M1726 572 L1792 528 L1858 572 Z M1789 516 L1795 516 L1795 530 L1789 530 Z M1734 572 L1850 572 L1850 652 L1734 652 Z M1744 652 L1756 652 L1748 732 L1734 732 Z M1828 652 L1840 652 L1850 732 L1836 732 Z M1786 652 L1798 652 L1798 732 L1786 732 Z M1742 690 L1842 690 L1844 698 L1740 698 Z M1627.6 742.3 L1569.9 706.2 L1595.3 665.5 L1653 701.6 Z M1567.8 709.6 L1561 705.4 L1590.7 657.9 L1597.4 662.1 Z M1548 732 L1556 704 L1600 704 L1608 732 Z",
+        "fill": "#0c0e17"
+      },
+      {
+        "d": "M-10 1080 L-10 780 L742 780 L742 790 L760 790 L760 806 L734 806 L734 1080 Z M40 700 L170 700 L170 780 L40 780 Z M30 692 L180 692 L180 702 L30 702 Z M214 748 L232 748 L232 780 L214 780 Z M208 742 L238 742 L238 750 L208 750 Z",
+        "fill": "#040509"
+      },
+      {
+        "d": "M615 780 L604 670 L608.4 656.8 C617.2 604 628.2 549 632.6 505 C634.8 474.2 619.4 461 597.4 458.8 C584.2 457.7 574.3 455.5 572.1 450 C577.6 445.6 578.7 436.8 577.6 425.8 C576.5 412.6 568.8 404.9 560 404.9 C551.2 404.9 543.5 412.6 542.4 425.8 C541.3 436.8 542.4 445.6 547.9 450 C545.7 455.5 535.8 457.7 522.6 459.9 C502.8 463.2 489.6 472 487.4 489.6 C439 489.6 351 500.6 238.8 520.4 C271.8 544.6 287.2 564.4 282.8 582 C278.4 599.6 254.2 612.8 230 619.4 C269.6 634.8 293.8 648 298.2 661.2 C300.4 674.4 304.8 687.6 296 703 C366.4 694.2 445.6 656.8 511.6 665.6 L516 674.4 L500.6 780 L542.4 780 L553.4 685.4 C556.7 678.8 563.3 678.8 566.6 685.4 L575.4 780 Z",
+        "fill": "#040509"
+      }
+    ]
+  },
+  "options": {
+    "palette": [
+      {
+        "id": "pal-storm",
+        "presetId": "pal-bruise",
+        "label": "Bruised Storm",
+        "authorScore": 10
+      },
+      {
+        "id": "pal-moon",
+        "presetId": "pal-dawn",
+        "label": "Cold Moonlight",
+        "authorScore": 7
+      },
+      {
+        "id": "pal-midtown",
+        "presetId": "pal-neon",
+        "label": "Midtown Neon",
+        "authorScore": 4
+      },
+      {
+        "id": "pal-signal",
+        "presetId": "pal-sodium",
+        "label": "Signal Amber",
+        "authorScore": 1
+      }
+    ],
+    "form": [
+      {
+        "id": "form-clouds",
+        "presetId": "form-fog",
+        "label": "Low Storm Clouds",
+        "authorScore": 10
+      },
+      {
+        "id": "form-grapple",
+        "presetId": "form-sparks",
+        "label": "Grapple Sparks",
+        "authorScore": 7
+      },
+      {
+        "id": "form-manhole",
+        "presetId": "form-steam",
+        "label": "Manhole Steam",
+        "authorScore": 4
+      },
+      {
+        "id": "form-pollen",
+        "presetId": "form-dust",
+        "label": "Pollen Season",
+        "authorScore": 1
+      }
+    ],
+    "motion": [
+      {
+        "id": "motion-sweep",
+        "presetId": "motion-sway",
+        "label": "Searchlight Sweep",
+        "authorScore": 10
+      },
+      {
+        "id": "motion-signal",
+        "presetId": "motion-pulse",
+        "label": "Signal Pulse",
+        "authorScore": 7
+      },
+      {
+        "id": "motion-cape",
+        "presetId": "motion-drift",
+        "label": "Cape in the Wind",
+        "authorScore": 4
+      },
+      {
+        "id": "motion-heat",
+        "presetId": "motion-flicker",
+        "label": "Heat Lightning",
+        "authorScore": 1
+      }
+    ],
+    "texture": [
+      {
+        "id": "tex-glass",
+        "presetId": "tex-neutral",
+        "label": "Rain-Slick Glass",
+        "authorScore": 10
+      },
+      {
+        "id": "tex-tar",
+        "presetId": "tex-neutral",
+        "label": "Wet Tar Roof",
+        "authorScore": 7
+      },
+      {
+        "id": "tex-rust",
+        "presetId": "tex-neutral",
+        "label": "Rusted Fire Escape",
+        "authorScore": 4
+      },
+      {
+        "id": "tex-pigeon",
+        "presetId": "tex-neutral",
+        "label": "Pigeon Feathers",
+        "authorScore": 1
+      }
+    ],
+    "mood": [
+      {
+        "id": "mood-brood",
+        "presetId": "mood-neutral",
+        "label": "Brooding",
+        "authorScore": 10
+      },
+      {
+        "id": "mood-watch",
+        "presetId": "mood-neutral",
+        "label": "Silent Watch",
+        "authorScore": 7
+      },
+      {
+        "id": "mood-entrance",
+        "presetId": "mood-neutral",
+        "label": "Big Entrance",
+        "authorScore": 4
+      },
+      {
+        "id": "mood-wrong",
+        "presetId": "mood-neutral",
+        "label": "Wrong Rooftop",
+        "authorScore": 1
+      }
+    ]
+  },
+  "prompts": [
+    {
+      "id": "p1",
+      "text": "Justice"
+    },
+    {
+      "id": "p2",
+      "text": "Menacing but approachable"
+    },
+    {
+      "id": "p3",
+      "text": "Heroic, without a single cloud in the sky"
+    },
+    {
+      "id": "p4",
+      "text": "Wet concrete, ozone, and a searchlight humming overhead"
+    },
+    {
+      "id": "p5",
+      "text": "Protect Peachtree Street. No, the other Peachtree."
+    },
+    {
+      "id": "p6",
+      "text": "Fighting crime during peak pollen season"
+    },
+    {
+      "id": "p7",
+      "text": "The signal is up, but he's stuck in Connector traffic"
+    },
+    {
+      "id": "p8",
+      "text": "Brooding, but make it Midtown"
+    },
+    {
+      "id": "p9",
+      "text": "Make the whole city feel watched over"
+    },
+    {
+      "id": "p10",
+      "text": "Somewhere, a villain is still circling I-285"
+    }
+  ]
+}

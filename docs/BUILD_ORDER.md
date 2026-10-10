@@ -84,7 +84,7 @@ Two parallel tracks that meet at the `RenderParams` + RTDB contracts. Content ru
 |---|---|---|
 | Wire real scenes into `/screen`, `/play`; bots run a full round | 1 | Checkpoint |
 | Lock → snapshot JPEG → stored locally (function stub) | 0.5 | File is 1280×720, < 400 KB |
-| Read-only gallery list (3 pinned demo entries) as the host's scene picker | 0.5 | Host picks from the list |
+| Read-only gallery list (3 pinned demo entries) as the host's scene picker (solo P0: lists `BUNDLED_SCENES`, no RTDB `/gallery`; see D-39) | 0.5 | Host picks from the list |
 | Scripted refresh/disconnect test (RISKS R7) | 1 | All cases in ROUND_STATE_MACHINE §5 pass |
 
 **Checkpoint h10:** one round end-to-end on two phones with placeholder art and no AI.
