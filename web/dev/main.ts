@@ -9,7 +9,7 @@ const options = scene.options;
 const app = document.querySelector<HTMLElement>("#app")!;
 const controls = document.createElement("div");
 app.append(controls);
-const renderer = mountRenderer(app, { background: scene.baseArt.background, swatches: true });
+const renderer = mountRenderer(app, { background: scene.baseArt.background, baseArt: scene.baseArt, swatches: true });
 
 let choices: Choices = {};
 const slider = Object.assign(document.createElement("input"), { type: "range", min: "0", max: "1", step: "0.01" });
