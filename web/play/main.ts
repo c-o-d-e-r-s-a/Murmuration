@@ -44,7 +44,10 @@ function run(uid: string) {
   let round: Round | null = null;
   let me: Player | null = null;
   let choices: Choices = {};
+  let online = true;
   let shownKey = ""; // re-render only when the visible state changes
+  const banner = el("div", { textContent: "Reconnecting…" });
+  banner.style.cssText = "padding:10px 12px;border-radius:12px;background:#5a2a22;font-weight:600";
   const count = el("div");
   count.style.cssText = "font:700 48px system-ui,sans-serif;font-variant-numeric:tabular-nums";
 
@@ -67,7 +70,7 @@ function run(uid: string) {
     const scene = BUNDLED_SCENES.find((s) => s.id === round!.sceneId);
     const live = round.status === "live" && !!round.startsAt && serverNow() < endsAt();
     const mine = role ? choices[role]?.optionId : undefined;
-    const key = [me.removed, me.nick, role, round.id, round.status, mine, live].join("|");
+    const key = [me.removed, me.nick, role, round.id, round.status, mine, live, online].join("|");
     if (key === shownKey) return;
     const prevRole = shownKey.split("|")[2];
     const prevStatus = shownKey.split("|")[4];
@@ -76,26 +79,28 @@ function run(uid: string) {
     if (round.status === "locked" && prevStatus !== "locked") buzz(60);
 
     if (me.removed) return void app.replaceChildren(el("h1", { textContent: "Removed by host" }));
-    const head = el("div", {}, el("div", { textContent: me.nick }), el("h1", { textContent: role ? `You are the ${role[0].toUpperCase()}${role.slice(1)}` : "You're a Spectator" }));
+    const head = el("div", {}, ...(online ? [] : [banner]), el("div", { textContent: me.nick }), el("h1", { textContent: role ? `You are the ${role[0].toUpperCase()}${role.slice(1)}` : "You're a Spectator" }));
     if (!role || !scene) {
       const msg = round.status === "lobby" ? "Waiting for the round to start." : round.status === "live" ? "Watch the big screen." : round.status === "locked" ? "Locked, get ready to rate." : "Look at the big screen.";
       return void app.replaceChildren(head, el("p", { textContent: msg }));
     }
+    const on = live && online;
     const buttons = scene.options[role].map((o) => {
-      const b = el("button", { textContent: o.label, disabled: !live, onclick: () => pick(role, o.id) });
-      b.style.cssText = `${BTN};${o.id === mine ? "border-color:#FFB45A;background:#4a3a22;" : ""}${live ? "" : "opacity:.5;"}`;
+      const b = el("button", { textContent: o.label, disabled: !on, onclick: () => pick(role, o.id) });
+      b.style.cssText = `${BTN};${o.id === mine ? "border-color:#FFB45A;background:#4a3a22;" : ""}${on ? "" : "opacity:.5;"}`;
       return b;
     });
     const note = round.status === "lobby" ? "Waiting for the round to start." : live ? round.promptText ?? "" : "Locked.";
     app.replaceChildren(head, count, el("p", { textContent: note }), ...(round.status === "lobby" ? [] : buttons));
   }
 
+  onValue(ref(db, ".info/connected"), (s) => { online = s.val() === true; render(); });
   onValue(ref(db, `${base}/round`), (s) => { round = s.val(); render(); });
   onValue(ref(db, `${base}/players/${uid}`), (s) => { me = s.val(); render(); });
   onValue(ref(db, `${base}/choices`), (s) => { choices = s.val() ?? {}; render(); });
   setInterval(() => {
-    const left = round?.status === "live" && round.startsAt ? Math.max(0, endsAt() - serverNow()) : 0;
-    count.textContent = round?.status === "live" ? `${Math.floor(left / 60000)}:${String(Math.ceil(left / 1000) % 60).padStart(2, "0")}` : "";
+    const s = round?.status === "live" && round.startsAt ? Math.ceil(Math.max(0, endsAt() - serverNow()) / 1000) : 0;
+    count.textContent = round?.status === "live" ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : "";
     render(); // catches the live→timeout flip without a DB event
   }, 250);
 }

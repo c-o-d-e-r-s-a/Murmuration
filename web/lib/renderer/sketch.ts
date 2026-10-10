@@ -7,8 +7,8 @@ import type { Current } from "./params";
 import { createLive, mulberry32, REF_H, REF_W, stepLive, stepsAt } from "./live";
 import type { Live } from "./live";
 
-// clock: ms since round start (D-20); defaults to ms since mount. seed: round.seed.
-type Opts = { background: string; swatches?: boolean; baseArt?: Scene["baseArt"]; seed?: number; clock?: () => number; adaptive?: boolean };
+// clock: ms since round start (D-20); null or absent = ms since mount. seed: round.seed.
+type Opts = { background: string; swatches?: boolean; baseArt?: Scene["baseArt"]; seed?: number; clock?: () => number | null; adaptive?: boolean };
 
 const GRAIN_TILE = 128;
 const rgba = ([r, g, b]: number[], a: number) => `rgba(${r | 0},${g | 0},${b | 0},${a})`;
@@ -22,7 +22,7 @@ export function mountRenderer(parent: HTMLElement, opts: Opts) {
   const sprite = Object.assign(document.createElement("canvas"), { width: 64, height: 64 }); // soft particle, tinted per frame
   const seed = opts.seed ?? 1;
   // A5: smoothed frame time drives how many of the (always simulated) particles are drawn, so the sim stays deterministic.
-  const stats = { fps: 60, scale: 1, drawn: 0 };
+  const stats = { fps: 60, scale: 1, drawn: 0, frames: 0 }; // frames: completed draws with a target
   let ms = 1000 / 60;
 
   // D-16: scene paths -> Path2D on an offscreen layer; viewBox scaled uniformly and centered, so resizing keeps the composition.
@@ -59,8 +59,8 @@ export function mountRenderer(parent: HTMLElement, opts: Opts) {
     return [w, (w * 9) / 16];
   };
 
-  new p5((s: p5) => {
-    const clock = opts.clock ?? (() => s.millis());
+  const inst = new p5((s: p5) => {
+    const clock = () => opts.clock?.() ?? s.millis();
     s.setup = () => {
       s.pixelDensity(Math.min(window.devicePixelRatio, PIXEL_DENSITY_CAP));
       s.createCanvas(...fit()).parent(parent);
@@ -183,11 +183,14 @@ export function mountRenderer(parent: HTMLElement, opts: Opts) {
           s.rect(i * w, H * 0.9, w, H * 0.1);
         });
       }
+      stats.frames++;
     };
   });
 
   return {
     stats,
+    /** Stops the draw loop and removes the canvas and offscreen layers. */
+    remove: () => inst.remove(),
     setTarget(t: RenderParams) {
       if (!cur) cur = toCurrent(t);
       target = t;

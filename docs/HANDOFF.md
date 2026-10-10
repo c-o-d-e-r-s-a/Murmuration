@@ -1,32 +1,36 @@
 # HANDOFF
 
 ## Done this session
-- Integration part 1/2 ([BUILD_ORDER](BUILD_ORDER.md) §3 Content rows + Integration "gallery list" row, solo §8). Content lane, plus `shared/sceneLoader.ts` + test (lane A) and docs.
-- `shared/scenes/diner.json`: Georgia pines, barrel-roof diner whose window panes/door are holes (palette glows through), Nighthawks-style interior (lone regular, mugs, pie dome, stools, pendant lamps), "OPEN 24 HRS" pylon with letter holes, streetlight + wires. Translucent glass fills make letters/windows glow above the sky.
-- `shared/scenes/vigilante.json`: generic Atlanta-style skyline (cylinder, pyramid + spire, gothic crown), caped figure from behind on a rooftop ledge (no ears, no scallops), searchlight beam to a plain cloud spot, water tower.
-- Both: 3 live roles on distinct presets, texture/mood on neutral presets, ranks 10/7/4/1, labels <= 18, 10 prompts, generic `description` field.
-- `BUNDLED_SCENES` = rush-hour, diner, vigilante. `sceneLoader.test.ts` also asserts each live preset used once, texture/mood neutral, and brand words only in `title` (D-40).
-- Host picker unchanged (already maps `BUNDLED_SCENES`); D-39.
-- **Prompt template changes:** CONTRACTS §8 Gemini judge input `scene` is now the generic description (was "Atlanta Rush Hour" = title); Reimagined prompt uses `{scene description}`; D-36 reworded.
+- Integration part 2/2 ([BUILD_ORDER](BUILD_ORDER.md) §3 Integration: "Wire real scenes / bots full round", "Lock -> snapshot JPEG", "Scripted refresh/disconnect test"; solo §8). Lanes A + B, no contracts/rules/package changes.
+- `web/lib/renderer/sketch.ts`: `mountRenderer` returns `remove()` (p5 leak fixed: 3 scene switches keep 3 canvases); `clock` may return null (= ms since mount); `stats.frames` counts finished draws.
+- `web/screen/main.ts`: clock = `clamp(serverNow() - startsAt, 0, durationMs)` while live, exactly `durationMs` after, null in lobby. Remount key = scene + round.id + phase (lobby / live / locked) + final optionIds when locked. Leaving live remounts fresh (current = target, t = durationMs) = one canonical locked frame. Adaptive stays off. Snapshot: first locked frame drawn onto 1280x720, JPEG 0.8, base64 in memory; `?debug=1` logs `{width, height, kb, base64Length}` and shows a download link. One `TODO(P1-1)` for judgeRequestedAt + judgeRound.
+- `web/play/main.ts`: "Reconnecting…" banner + buttons disabled on `.info/connected == false`; countdown now formats like `/screen` (was `0:00` at 59.x s and `1:00` at 119.x s).
 
-## Next
-- Integration part 2: wire scenes into `/screen` + `/play`, bots full round (`web/screen/main.ts`).
-- First fix the p5 leak there: switching scenes in the lobby remounts without removing the old p5 instance (ponytail note in `web/screen/main.ts`); with 3 scenes each switch adds a full draw loop. Return `remove()` from `mountRenderer` and call it before remount.
-- Add `description` to the `Scene` type (`shared/contracts.ts`) and to `rush-hour.json` ("a gridlocked highway at dusk").
+## ROUND_STATE_MACHINE §5 checklist (prod RTDB, host+screen on `localhost`, phone on `127.0.0.1` = separate uid, 3 bots, 4 rounds)
+- [x] Host refresh mid-round: observed in browser. live t≈10 s resumes, bots continue; closed across endsAt then reopened -> T3+T4 ran; reload at endsAt+300 ms -> T3 by reloaded page; reload in rating -> reveal at the 25 s cap; reload ~1 s into locked -> rating at +1.97 s (couldn't tell old vs new page wrote T4). statusVersion strictly +1 per step. Fix: none.
+- [x] Screen refresh mid-round: observed. Live: right scene/choices, countdown matches phone, no catch-up animation. Rating + reveal: canvas and snapshot hashes identical to the unrefreshed screen (r1, r2). T4a judge part: N/A (P1-1). Fix: deliverable 1.
+- [x] Phone refresh / reconnect: observed. Reload mid-live keeps uid + Palette; `goOffline` shows banner + disables buttons, host shows offline dot; `goOnline` restores. Fix: banner added (was missing).
+- [x] Creator disconnects: observed. Last choice stands on screen; host reassigned Palette to Bot 3 mid-live, bot picked; phone came back as Spectator. Fix: none.
+- [x] Nobody joins: observed (Add 3 bots fills form/motion + 1 spectator; bots pick ~5 s then 1–2 more). Bot votes: N/A (P1-3).
+- [x] Two phones claim a role: observed. Phone writing `choices/form`, `round/status`, `round/slots/form` -> PERMISSION_DENIED.
+- [ ] Near-simultaneous choice writes: traced in code (one key per role, events push-only); not forced in browser.
+- [ ] Join storm: traced in code (distinct keys; screen shows 3 dials + count). Not load-tested.
+- [ ] Judge call fails: N/A (P1-1). Today the rating window always runs to the 25 s cap (no verdict yet).
+- [x] Host closes laptop: observed. `/host/` without `?s` resumed SBNE from localStorage.
 
 ## Verify status
-- typecheck, lint, test, build pass; all 7 `*.test.ts` pass via `npx tsx`. Art checked in the real renderer on `/dev` (module injection), 4 option combos per scene.
+- typecheck, lint, `npm test`, build pass; all 7 `*.test.ts` pass via `npx tsx`. `database.rules.test.mts` passes in the emulator (36 assertions; command in Gotchas).
 
 ## Decisions / docs
-- D-39, D-40 added; CONTRACTS §8 judge input + Reimagined prompt, D-36, BUILD_ORDER Integration row updated.
+- No new D-nn. D-18 clarified: "filled" = has a choice at lock (matches `authorScore`; a slot that never picked is skipped).
 
 ## Blockers / open items
-- Manual `/host` -> `/screen` check not run by me (RTDB is prod-only, no emulator wiring).
-- `.cursor/skills/judge-script/SKILL.md` says input "scene"; should say `scene.description` (out of scope here).
+- Real-phone QR run over LAN not done (`npm run dev -- --host`).
+- `.cursor/skills/judge-script/SKILL.md` still says input "scene" (should be `scene.description`). `Scene.description` type + rush-hour field deferred to P1-1.
 
 ## Gotchas
-- Holes show whatever is drawn *under* them in the same art layer, not the wash: keep shapes out from behind windows/letters (why the pines skip the diner).
-- Translucent fills use 8-digit hex (`#rrggbbaa`); the loader doesn't validate fills.
-- `/dev` only renders `BUNDLED_SCENES[0]` (rush-hour).
-- Paths were generated by a throwaway script (not in repo); edit the JSON by hand.
-- `npm test` still runs only `scoring.test.ts`.
+- Locked frame is pixel-equal only at the same canvas size/DPR; the snapshot is resampled to 1280x720 either way.
+- Mid-live refresh runs every missed step in one frame (up to 7200 x 1200 particles at 120 s): a short hitch, by design.
+- Crossfading fog <-> dust draws big squares for ~1 s (sharp kinds use the fog's particleSize). Visible in live, not in the locked frame.
+- Testing two identities in one browser: use `localhost` vs `127.0.0.1` (separate anonymous uid).
+- Rules tests (needs Java 21 on PATH): `npx -y firebase-tools@latest emulators:exec --only database "npx tsx database.rules.test.mts"`. The comment in that file still says `.ts`.
