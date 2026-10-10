@@ -1,33 +1,28 @@
 # HANDOFF
 
 ## Done this session
-- Verification only: RISKS R7 / [ROUND_STATE_MACHINE §5](ROUND_STATE_MACHINE.md) recovery cases on deployed build, session `XUTV` (60 s, 3 Creators incl. 1 human phone @390 px, 10 bot Spectators). 4 rounds (r1–r4). Gates [BUILD_ORDER](BUILD_ORDER.md) §8 R7 row.
-- No source changes, no commit. `/config/flags/aiEnabled` toggled false for r4 and restored to `true`.
+- **P1-2 backend** ([BUILD_ORDER](BUILD_ORDER.md) §4/§8): ElevenLabs in `functions/src/judgeRound.ts`. Writes `results.verdict{script, ready:false}`, then `verdictAudio()` (cache `verdicts/{sha256(script)}.mp3` → ElevenLabs ≤ `TTS_TIMEOUT_MS` → Storage, else `fallback/{sceneId}/0.mp3`, else null), then `{audioUrl, ready:true}`. `ELEVENLABS_API_KEY` added to the function's secrets. `meta.usage.ttsChars` += script length right before each ElevenLabs call.
+- `functions/src/judgeRound.test.ts`: live `ttsMp3` check (real clip + bad voice → null) when the key is in env.
+- Not deployed, not committed.
 
 ## In progress / next
-- **P1-10** pulse panel (`sessionPulse`) — [BUILD_ORDER](BUILD_ORDER.md) §8.
-- Decide on the hidden-/screen gap below (needs a D-nn).
+- Deploy functions and run the P1-2 manual check (cache hit on a repeated canned script with `aiEnabled=false`, `voiceEnabled=true`).
+- Then A2 / P1-4 playback on `/screen` (`web/screen/main.ts`) reads `results.verdict.audioUrl`; or P1-10.
 
-## Verify status (R7)
-| # | Case | Result |
-|---|---|---|
-| 1 | Host refresh live / locked / rating / reveal | **pass** (statusVersion +1 per step: 4, 9, 14, 19 at each reveal; no 2nd judge) |
-| 2 | Screen refresh live / locked / rating / reveal | **pass**; locked-before-SETTLE only (reload >1.5 s). Reveal frames identical; `judgeRequestedAt` set once, 1 `judgeRound` call (r2, r4) |
-| 3 | Phone refresh Creator mid-live, Spectator mid-rating | **pass** (same UI, pick highlighted; rating stays 4, buttons disabled) |
-| 4 | Host refresh at reveal → New round | **pass** rotation once (+1, one archive). Tiger row count **not checked** (no DB access); exactly 1 `logRoundEvents` call per reveal |
-| 5 | `aiEnabled=false` | **pass** canned ai+verdict (`fallback:true`), reveal 13.8 s after lock |
-| 6 | Host tab hidden whole round | **pass** (r2/r4 ran with `/screen` in front; visibility not read directly) |
+## Verify status
+- typecheck pass · lint pass · `npm test` pass · build pass (chunk-size warning, already there).
+- `judgeRound.test.ts` live: Gemini 11.8 s ok; TTS `eleven_v4_turbo` 1.1 s, 21 KB mp3; bad voice id → null.
+- Secret `ELEVENLABS_API_KEY` v1 ENABLED in Secret Manager.
 
 ## Decisions / docs
-- None added. Gap below likely needs a D-nn (+ ROUND_STATE_MACHINE §5 note).
+- None added. Two judgement calls (could be D-nn): cache is checked **before** the TTS char cap (cache hits are free); `verdict.fallback` still means "canned script", not "fallback audio".
 
 ## Blockers / open items
-- **Gap (not fixed):** `/screen` hidden/absent at lock → capture never runs (rAF), `judgeRequestedAt` never set, no canned fallback; reveal at 25 s cap with AI "–" and no verdict (r1, r3). Small fix lives in Lane B (`functions/`/host) or Lane A (`web/screen/main.ts`): e.g. host writes canned `ai`/`verdict` at the cap if `judgeRequestedAt` is null.
-- Cosmetic: at ~512 px width the reveal "COMBINED" label overlaps the credits row (`web/screen/`).
-- Carried: real-phone LAN, P1-2 audio, `meta.screenUid`, custom-domain auth.
+- Carried: hidden-/screen-at-lock gap (no judge call, no verdict), `meta.screenUid`, real-phone LAN, custom-domain auth.
+- No `fallback/{sceneId}/0.mp3` clips yet (P1-8/A3), so the fallback path yields `audioUrl: null`.
 
 ## Gotchas
-- Host and `/screen` in one browser: only one is visible; `/screen` must be in front at lock for the judge. Host still ticks (worker).
-- Rotation keeps a lone human Creator (humans queue before bots); to test Spectator, unassign in lobby and give the slot to a bot.
-- Browser tool `viewId` is ignored; select the tab by index first. `firebase database:get` via CLI works (~25 s each).
-- Test session `XUTV` left at r4 reveal; older `NHET`, `M2DS` may exist.
+- With a live Gemini script and TTS off/failed, the fallback clip (canned audio) won't match the on-screen script text (RISKS §2 accepts this).
+- Worst case is Gemini 12 s + TTS 10 s after snapshot upload, which can pass the 25 s rating cap; the host then reveals with `ready` false and the verdict lands late.
+- Cache key is the script only: changing `ttsVoiceId`/`ttsModelId` reuses old clips for identical (canned) scripts. To regenerate, delete `verdicts/*`.
+- Fallback/cached URLs need a download token; files uploaded with `gsutil` (no token) come back as null. Upload via the console.

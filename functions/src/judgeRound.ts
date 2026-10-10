@@ -1,20 +1,21 @@
-import {randomUUID} from "node:crypto";
+import {createHash, randomUUID} from "node:crypto";
 import {GoogleGenAI} from "@google/genai";
 import {getDatabase} from "firebase-admin/database";
 import {getDownloadURL, getStorage} from "firebase-admin/storage";
 import {HttpsError, onCall} from "firebase-functions/https";
 import * as logger from "firebase-functions/logger";
 import {defineSecret} from "firebase-functions/params";
-import {GEMINI_TIMEOUT_MS, ROLES, VERDICT_WORDS_MAX, VERDICT_WORDS_MIN} from "../../shared/contracts";
+import {GEMINI_TIMEOUT_MS, ROLES, TTS_TIMEOUT_MS, VERDICT_WORDS_MAX, VERDICT_WORDS_MIN} from "../../shared/contracts";
 import type {AiResult, Choices, Flags, JudgeRoundRequest, JudgeRoundResponse, Results, Round, SessionMeta, Verdict} from "../../shared/contracts";
 import {BUNDLED_SCENES} from "../../shared/sceneLoader";
 import {aiScore} from "../../shared/scoring";
 
-// CONTRACTS §7 judgeRound: flags, cap, snapshot to Storage, one Gemini call (§8), canned fallback, idempotency.
-// Voice (P1-2) is not wired, so the verdict is ready as soon as the script is written.
+// CONTRACTS §7 judgeRound: flags, cap, snapshot to Storage, one Gemini call (§8), canned fallback, idempotency,
+// then verdict audio (ElevenLabs, cached by script hash, D-25); verdict.ready only once the audio decision is made.
 const CODE_RE = /^[A-HJ-NP-Z2-9]{4}$/;
 const MAX_SNAPSHOT_B64 = 1_500_000;
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
+const ELEVENLABS_API_KEY = defineSecret("ELEVENLABS_API_KEY");
 
 // CONTRACTS §8 response schema.
 const SCHEMA = {
@@ -82,6 +83,62 @@ export async function askGemini(models: string[], facts: object, labels: string[
   return null;
 }
 
+/** CONTRACTS §8 ElevenLabs TTS; null on any error or after TTS_TIMEOUT_MS. Only the script goes out (D-24). */
+export async function ttsMp3(script: string, voiceId: string, modelId: string): Promise<Buffer | null> {
+  const apiKey = ELEVENLABS_API_KEY.value();
+  if (!apiKey) return null;
+  try {
+    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_64`, {
+      method: "POST",
+      headers: {"xi-api-key": apiKey, "Content-Type": "application/json"},
+      body: JSON.stringify({text: script, model_id: modelId, voice_settings: {stability: 0.5, similarity_boost: 0.75, style: 0.3, speed: 1.05}}),
+      signal: AbortSignal.timeout(TTS_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      logger.warn("tts reply not ok", {status: res.status, body: (await res.text()).slice(0, 300)});
+      return null;
+    }
+    const mp3 = Buffer.from(await res.arrayBuffer());
+    return mp3.length ? mp3 : null;
+  } catch (e) {
+    logger.warn("tts call failed", {error: String(e)});
+    return null;
+  }
+}
+
+async function urlIfExists(path: string): Promise<string | null> {
+  try {
+    const file = getStorage().bucket().file(path);
+    const [exists] = await file.exists();
+    return exists ? await getDownloadURL(file) : null;
+  } catch (e) {
+    logger.warn("storage url failed", {path, error: String(e)});
+    return null;
+  }
+}
+
+/** CONTRACTS §7 step 5: cached clip, else fresh ElevenLabs clip, else the scene's fallback clip, else null. Never throws. */
+async function verdictAudio(script: string, sceneId: string, flags: Flags | null, ttsCharsUsed: number, base: string): Promise<string | null> {
+  const fallback = () => urlIfExists(`fallback/${sceneId}/0.mp3`);
+  try {
+    if (!flags?.voiceEnabled || !flags.ttsVoiceId || !flags.ttsModelId) return await fallback();
+    const path = `verdicts/${createHash("sha256").update(script).digest("hex")}.mp3`;
+    const cached = await urlIfExists(path);
+    if (cached) return cached;
+    if (ttsCharsUsed + script.length > (flags.maxTtsCharsPerSession ?? 0)) return await fallback();
+    // Counted before the call: a timed-out request may still be billed.
+    await getDatabase().ref(`${base}/meta/usage/ttsChars`).transaction((n) => (n ?? 0) + script.length);
+    const mp3 = await ttsMp3(script, flags.ttsVoiceId, flags.ttsModelId);
+    if (!mp3) return await fallback();
+    const file = getStorage().bucket().file(path);
+    await file.save(mp3, {contentType: "audio/mpeg", metadata: {metadata: {firebaseStorageDownloadTokens: randomUUID()}}});
+    return await getDownloadURL(file);
+  } catch (e) {
+    logger.warn("verdict audio failed", {error: String(e)});
+    return await fallback();
+  }
+}
+
 // One canned verdict per demo scene (judge-script skill). Generic: they cannot know the chosen options.
 const CANNED: Record<string, {comment: string; script: string}> = {
   "rush-hour": {
@@ -102,7 +159,7 @@ const CANNED: Record<string, {comment: string; script: string}> = {
   },
 };
 
-export const judgeRound = onCall<JudgeRoundRequest, Promise<JudgeRoundResponse>>({timeoutSeconds: 30, secrets: [GEMINI_API_KEY]}, async (req) => {
+export const judgeRound = onCall<JudgeRoundRequest, Promise<JudgeRoundResponse>>({timeoutSeconds: 30, secrets: [GEMINI_API_KEY, ELEVENLABS_API_KEY]}, async (req) => {
   const uid = req.auth?.uid;
   if (!uid) throw new HttpsError("unauthenticated", "sign in first");
   const {sessionCode, roundId, snapshotJpegBase64} = req.data ?? {};
@@ -151,12 +208,17 @@ export const judgeRound = onCall<JudgeRoundRequest, Promise<JudgeRoundResponse>>
   const ai: AiResult = judged ?
     {score: judged.score, comment: judged.comment, model: judged.model, fallback: false} :
     {score: 6, comment: canned.comment, model: "canned", fallback: true};
-  const verdict: Verdict = {script: judged?.script ?? canned.script, audioUrl: null, ready: true, fallback: !judged};
+  const verdict: Verdict = {script: judged?.script ?? canned.script, audioUrl: null, ready: false, fallback: !judged};
 
   // Host may have reset or started the next round while we worked; never write into someone else's round.
   if ((await db.ref(`${base}/round/id`).get()).val() !== roundId) throw new HttpsError("failed-precondition", "round moved on");
   const {committed} = await db.ref(`${base}/results/ai`).transaction((cur) => (cur ? undefined : ai));
   if (!committed) throw new HttpsError("already-exists", "already judged");
   await db.ref(`${base}/results`).update({verdict, snapshotUrl: snapshotUrl || null});
+
+  verdict.audioUrl = await verdictAudio(verdict.script, round.sceneId, flags, meta.usage?.ttsChars ?? 0, base);
+  verdict.ready = true;
+  if ((await db.ref(`${base}/round/id`).get()).val() !== roundId) throw new HttpsError("failed-precondition", "round moved on");
+  await db.ref(`${base}/results/verdict`).update({audioUrl: verdict.audioUrl, ready: true});
   return {ok: true, ai: {score: ai.score, comment: ai.comment, fallback: ai.fallback}, verdict, snapshotUrl};
 });
