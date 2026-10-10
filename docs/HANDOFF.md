@@ -1,22 +1,24 @@
 # HANDOFF
 
 ## Done this session
-- B1 ([BUILD_ORDER](BUILD_ORDER.md)): `web/lib/firebase.ts` exports `app/auth/db`, `signIn()` (anonymous, returns uid), `serverNow()` (`Date.now()` + `.info/serverTimeOffset`), `trackPresence(code, uid)` (onDisconnect registered first, then `connected:true`; re-runs on reconnect), plus re-exports of common RTDB fns.
-- `web/play/main.ts`: temporary B1 smoke page at `http://localhost:5173/play/?s=TEST` (Vite root is `web/`). Creates `meta` if missing (first visitor becomes host), joins with a `Guest-xxxx` nick, lists players online/offline. B2/B3 replace it.
+- A1 ([BUILD_ORDER](BUILD_ORDER.md)), solo scope (§8): `shared/presets.ts` (lane A) with `PRESETS`, `NEUTRAL_PRESET_ID`, `getPreset(role, id)` (unknown/wrong-role id -> neutral), `stripProtected(overrides)`, `presetParams(role, id, overrides)`.
+- 4 presets each for palette (`pal-sodium/neon/dawn/bruise`), form (`form-fog/steam/sparks/dust`), motion (`motion-pulse/sway/flicker/drift`) + a neutral per role; texture/mood are neutral only (`tex-neutral`, `mood-neutral`).
+- Photosensitivity: rate/area clamped at build; overrides can never set `motionRateHz`/`motionArea`.
+- Check: `shared/presets.test.ts` (run `npx tsx shared/presets.test.ts`).
 
 ## Next
-- B2: `web/host/main.ts` (create session, QR, player list). Call `signIn()` first, then write `meta`/`players`.
+- A2: `RenderParams` resolve + easing loop in `web/lib/renderer/` (use `presetParams`). Also content/loader: `shared/sceneLoader.ts` should call `stripProtected` and reject unknown `presetId` via `PRESETS`.
 
 ## Verify status
-- typecheck, lint, test, build: all pass. Manual B1 check passed against prod RTDB (second user online → offline ~4 s after disconnect).
+- typecheck, lint, test, build re-run after a one-line type fix (see session summary).
 
 ## Decisions / docs
-- None new. Web config stays in `firebase.ts` (public by design, not a secret).
+- None new.
 
 ## Blockers / open items
-- None. `database.rules.json` unchanged; it is correct as-is.
-- Prod RTDB now has a `sessions/TEST` node from the smoke test; delete it in the console when convenient.
+- `package.json` `test` only runs `scoring.test.ts`; presets test is not wired in (not allowed to edit). Suggest `tsx shared/scoring.test.ts && tsx shared/presets.test.ts`.
 
 ## Gotchas
-- `trackPresence` writes only `connected` + `lastSeen`, and rules reject it unless `meta` exists and `players/{uid}` already has a `nick` (create the player record with `set` first, as the smoke page does).
-- `serverNow()` is local-clock until the offset listener fires (~100 ms after load).
+- Neutral `mood` has an empty `moodWord`; renderer must skip the watermark when empty.
+- Neutral `motion` has `motionArea: 0` / rate 0 (still).
+- Prod RTDB still has `sessions/TEST` from B1 smoke test.
