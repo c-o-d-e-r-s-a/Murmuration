@@ -1,29 +1,24 @@
 # HANDOFF
 
 ## Done this session
-- B4 state machine on `/host` ([BUILD_ORDER](BUILD_ORDER.md) §8 solo scope). Lane B.
-- `web/host/main.ts`: T2 Start (guard ≥ 3 slots, seed, `startsAt`, clears last round's data, `players/*/role` from slots), T3 lock + `results.author`, T4 settle, T5 reveal with 3 s extensions while `verdict.ready` is false (cap: lock + 26.5 s) + `results.audience`/`combined`, T6 New round (archive to `rounds/{id}`), T7 Reset (confirm, releases the aborted prompt), T8 Reroll. Every lobby entry (T1, T6, T7, scene change) draws a preview prompt.
-- 250 ms tick re-derives steps from server timestamps; acts only after all 6 listeners have fired once. Stale `round` snapshots (lower `statusVersion`) are dropped; `busy` stops double-fires.
-- Bot Creators pick at ~5 s, then 1–2 changes (writes `choices` + `events` as host). Host reload skips picks already past.
-- `web/host/machine.ts` (pure: `due`, `drawPrompt`, `botPlan`, `ratingCap`) + `machine.test.ts`.
+- B5 `/screen` ([BUILD_ORDER](BUILD_ORDER.md) §8 solo scope). Lane B (touches the shared renderer only by calling it).
+- `web/screen/main.ts`: `?s=CODE`, anonymous sign-in, listens to `round`/`choices`/`players`; waits for all three before the first `setTarget` (refresh = no catch-up animation); wash via `resolveTarget` + `mountRenderer`; lobby view forces neutral target.
+- `web/screen/index.html`: CSS in `vw`, status-driven chrome via `#ui[data-s]`: lobby (QR, code, URL, dials with nicks), live (prompt, server-time countdown, credits strip), locked (chrome fades), rating (scrim, title card, breathing "The room is judging"), reveal (compressed title card, credits).
 
 ## Next
-- B5 `/screen` (`web/screen/main.ts`): subscribe to `round`/`choices`/`players`/`results`, render via Track A, lobby/live/lock/reveal views.
+- B6 rules + emulator tests, or Integration: T4a snapshot at lock (`web/screen/main.ts`, needs `judgeRound` stub), then P1-3/P1-4 scores on reveal.
 
 ## Verify status
-- typecheck, lint, test, build all pass. `npx tsx web/host/machine.test.ts` passes (not in `npm test`; package.json is off limits).
-- Browser run with 3 bots on session `5C2P`: lobby → live → locked → rating → reveal → lobby, host refreshed during live and rating, resumed both times. Archive and reset checked in RTDB. Locked/reveal-state refresh and real-phone taps not run.
+- typecheck, lint, test, build pass. Not run in a browser (no live session test yet).
 
 ## Decisions / docs
-- None new. T6 keeps the same slots; queue rotation is P1-5.
+- None new.
 
 ## Blockers / open items
-- No `judgeRound` yet (P1-1), so every rating window runs to the 25 s cap.
-- `package.json` `test` should chain `web/lib/nick.test.ts` and `web/host/machine.test.ts`.
+- `package.json` `test` should chain `web/lib/nick.test.ts`, `web/host/machine.test.ts`.
 
 ## Gotchas
-- No bot Spectator votes (P1-3 owns that); audience is `method:"none"` until ratings exist.
-- No `reimagineRound`/`logRoundEvents` calls at T5 (P1-7, P1-9). No `gallery.plays` increment at Start.
-- Two `/host` tabs on one session can both fire a timer step (local `busy` guard only); keep one tab.
-- `serverNow()` offset is 0 for the first few hundred ms after load; a badly skewed laptop clock could fire one step early on refresh.
-- Test sessions `5C2P` (and old `TEST`) are in prod RTDB.
+- No scores/numerals on reveal (P1-4), no snapshot upload/`judgeRound` (Integration), no rating-window rail.
+- Scene change remounts p5 and leaks the old instance (one bundled scene; `ponytail:` comment).
+- Fonts load from Google Fonts; offline shows fallback stacks.
+- Screen roster is only the 3 solo dials; texture/mood are never shown.

@@ -4,9 +4,99 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Murmuration — Screen</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=Instrument+Sans:wght@500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* Art direction §1–§3, §6: design at 1920x1080, every size in vw so 1280x720 keeps the composition (1vw = 19.2px @1080p). */
+      :root {
+        --ink-0: #0b0b0f;
+        --surface-1: #15151c;
+        --hairline: #3a3a48;
+        --text-primary: #f4efe6;
+        --text-secondary: #b8b2a7;
+        --accent: #ffb45a;
+        --urgent: #ff6b5e;
+        --role-palette: #e88a6a;
+        --role-form: #7fb3d5;
+        --role-motion: #b48eeb;
+        --display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
+        --text: "Instrument Sans", system-ui, sans-serif;
+        --fs-h2: clamp(30px, 2.5vw, 68px);
+        --fs-body: clamp(24px, 1.875vw, 50px);
+        --fs-label: clamp(24px, 1.46vw, 40px);
+      }
+      html, body { margin: 0; height: 100%; background: var(--ink-0); color: var(--text-primary); font: 500 var(--fs-body)/1.3 var(--text); overflow: hidden; }
+      #stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+      #ui { position: fixed; inset: 0; pointer-events: none; }
+      #ui > * { position: absolute; transition: opacity 300ms ease-in; opacity: 0; }
+      #ui[data-s="lobby"] .lobby,
+      #ui[data-s="live"] .live,
+      #ui[data-s="rating"] .card, #ui[data-s="rating"] .judging,
+      #ui[data-s="reveal"] .card, #ui[data-s="reveal"] .credits { opacity: 1; transition-duration: 480ms; }
+      #ui[data-s="live"] .credits { opacity: 1; }
+      .small { font: 600 var(--fs-label)/1.3 var(--text); text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); }
+
+      /* lobby: QR card left 40%, info right 60% */
+      .lobby-card { left: 5vw; top: 5vh; bottom: 5vh; width: 34vw; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2vw; }
+      .qr { background: #f4efe6; padding: 1.7vw; }
+      .qr canvas { display: block; }
+      .code { font: 700 var(--fs-h2)/1 var(--display); letter-spacing: 0.12em; }
+      .lobby-info { left: 45vw; right: 5vw; top: 5vh; bottom: 5vh; display: flex; flex-direction: column; justify-content: center; gap: 1.4vw; }
+      .wordmark { font: 700 clamp(72px, 6.25vw, 168px)/1 var(--display); }
+      .dials { display: flex; flex-direction: column; gap: 0.9vw; }
+      .dial, .badge { display: flex; align-items: center; gap: 1vw; }
+      .dot { width: 1.3vw; height: 1.3vw; border-radius: 50%; flex: none; }
+      .dial .open { color: var(--text-secondary); }
+
+      /* live: top bar + bottom strip */
+      .bar { left: 5vw; right: 5vw; top: 5vh; display: flex; justify-content: space-between; align-items: center; gap: 2vw; min-height: 5.83vw; padding: 0 1.5vw; background: rgba(21, 21, 28, 0.72); border: 1px solid var(--hairline); }
+      .prompt { max-width: 60%; font: 600 clamp(30px, 2.6vw, 70px)/1.15 var(--display); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+      .count { font: 700 clamp(72px, 6.25vw, 168px)/1 var(--display); font-variant-numeric: tabular-nums; color: var(--accent); }
+      .count.urgent { color: var(--urgent); }
+      .credits { left: 5vw; right: 5vw; bottom: 5vh; display: flex; gap: 2vw; padding: 1vw 1.5vw; background: rgba(21, 21, 28, 0.72); border: 1px solid var(--hairline); font: 600 var(--fs-label)/1.3 var(--text); }
+      .credits:empty { display: none; }
+
+      /* locked/rating/reveal: bottom scrim + title card (reveal: compressed to the top) */
+      .scrim { left: 0; right: 0; bottom: 0; height: 40vh; background: linear-gradient(to top, rgba(11, 11, 15, 0.85), transparent); }
+      #ui[data-s="rating"] .scrim, #ui[data-s="reveal"] .scrim { opacity: 1; }
+      .card { left: 5vw; right: 5vw; bottom: 12vh; transition: all 480ms cubic-bezier(0.2, 0, 0, 1), opacity 480ms; }
+      .card .title { font: 700 clamp(48px, 4.4vw, 120px)/1.05 var(--display); max-width: 80%; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; border-top: 1px solid var(--hairline); padding-top: 1vw; margin-top: 0.6vw; }
+      #ui[data-s="reveal"] .card { bottom: auto; top: 5vh; }
+      #ui[data-s="reveal"] .card .title { font-size: var(--fs-h2); }
+      .judging { right: 5vw; top: 5vh; font: 600 var(--fs-h2)/1 var(--display); display: flex; align-items: center; gap: 1.2vw; }
+      .judging i { width: 0.7vw; height: 0.7vw; border-radius: 50%; background: var(--text-primary); animation: breathe 2s ease-in-out infinite; }
+      .judging i:nth-child(2) { animation-delay: 0.25s; }
+      .judging i:nth-child(3) { animation-delay: 0.5s; }
+      @keyframes breathe { 50% { opacity: 0.2; } } /* 0.5 Hz, no spinners (§6.8) */
+
+      #msg { position: fixed; left: 5vw; top: 5vh; font: 600 var(--fs-h2) var(--display); }
+    </style>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="stage"></div>
+    <div id="ui" data-s="">
+      <div class="lobby lobby-card">
+        <div class="qr"></div>
+        <div class="code"></div>
+        <div class="url"></div>
+      </div>
+      <div class="lobby lobby-info">
+        <div class="wordmark">Murmuration</div>
+        <div class="scene-title small"></div>
+        <div class="joined"></div>
+        <div class="dials"></div>
+      </div>
+      <div class="live bar"><div class="prompt"></div><div class="count">0:00</div></div>
+      <div class="credits"></div>
+      <div class="scrim"></div>
+      <div class="card"><div class="small scene-card"></div><div class="title"></div></div>
+      <div class="judging">The room is judging <i></i><i></i><i></i></div>
+    </div>
+    <div id="msg"></div>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

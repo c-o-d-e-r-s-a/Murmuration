@@ -27,9 +27,14 @@ export function mountRenderer(parent: HTMLElement, opts: Opts) {
       s.background(opts.background);
       if (!target) return;
       ease(cur, target, s.deltaTime);
-      const [r, g, b] = cur.colors[0];
-      s.fill(r, g, b, cur.washOpacity * 255);
-      s.rect(0, 0, s.width, s.height);
+      // Wash = vertical gradient bg -> primary -> secondary. colors[0] alone is near-black and looked like no change.
+      const ctx = s.drawingContext as CanvasRenderingContext2D;
+      const grad = ctx.createLinearGradient(0, 0, 0, s.height);
+      cur.colors.slice(0, 3).forEach(([r, g, b], i) => grad.addColorStop(i / 2, `rgb(${r | 0},${g | 0},${b | 0})`));
+      ctx.globalAlpha = cur.washOpacity;
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, s.width, s.height);
+      ctx.globalAlpha = 1;
       if (opts.swatches) {
         const w = s.width / 4;
         cur.colors.forEach(([r, g, b], i) => {
