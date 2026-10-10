@@ -18,6 +18,7 @@
     "../shared"
   ],
   "exclude": [
-    "../shared/**/*.test.ts"
+    "../shared/**/*.test.ts",
+    "src/**/*.test.ts"
   ]
 }
