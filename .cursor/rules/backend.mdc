@@ -1,0 +1,15 @@
+---
+description: Functions, security rules, flags
+globs: functions/**,database.rules.json,storage.rules,firebase.json
+alwaysApply: false
+---
+
+See [ARCHITECTURE](../../docs/ARCHITECTURE.md), [DATA_SCHEMA](../../docs/DATA_SCHEMA.md), [ROUND_STATE_MACHINE](../../docs/ROUND_STATE_MACHINE.md), [RISKS](../../docs/RISKS.md), [D-22–D-31](../../docs/DECISIONS.md).
+
+- Every external call: gated by `/config/flags`, per-session cap, timeout, canned fallback. Failure must never block the reveal.
+- Secrets via Functions config/env only; never log them or return them to clients.
+- Judge = one Gemini call returning `{score, comment, script}`; idempotent via transaction; validate output regardless of transport.
+- Never send nicknames to Gemini or ElevenLabs.
+- Rules are the enforcement layer: every writable path has `.write` on `auth.uid` and `.validate` on shape, size, and `now`. Test in the emulator.
+- Moderation (P3) fails closed.
+- Use documented API methods only; check the docs in [project doc references](../../docs/00-brief.md) rather than guessing names.

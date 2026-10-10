@@ -1,0 +1,28 @@
+# deps / build
+node_modules/
+dist/
+functions/lib/
+*.tsbuildinfo
+
+# secrets
+.env
+.env.*
+!.env.example
+.runtimeconfig.json
+service-account*.json
+*.local
+
+# firebase
+.firebase/
+firebase-debug.log*
+firebase-export-*/
+.firebaserc.local
+
+# logs / OS / editor
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+coverage/

@@ -1,0 +1,127 @@
+{
+  "rules": {
+    "config": {
+      "flags": {
+        ".read": "auth != null"
+      }
+    },
+    "gallery": {
+      ".read": "auth != null",
+      "$sceneId": {
+        "plays": {
+          ".write": "auth != null && data.exists()",
+          ".validate": "newData.val() == data.val() + 1"
+        }
+      }
+    },
+    "sessions": {
+      "$code": {
+        ".read": "auth != null",
+        "meta": {
+          ".write": "auth != null && $code.matches(/^[A-HJ-NP-Z2-9]{4}$/) && ((!data.exists() && newData.child('hostUid').val() == auth.uid) || data.child('hostUid').val() == auth.uid)",
+          ".validate": "newData.hasChildren(['hostUid'])",
+          "hostUid": { ".validate": "newData.isString() && (!data.exists() || newData.val() == data.val())" },
+          "screenUid": { ".validate": "newData.isString()" },
+          "sceneId": { ".validate": "newData.isString() && newData.val().length <= 64" },
+          "createdAt": { ".validate": "newData.isNumber()" },
+          "roundCounter": { ".validate": "newData.isNumber()" },
+          "usedPromptIds": { "$key": { ".validate": "newData.val() == true" } },
+          "usage": { "$counter": { ".validate": "newData.val() == data.val()" } },
+          "$other": { ".validate": false }
+        },
+        "players": {
+          "$uid": {
+            ".write": "auth.uid == root.child('sessions/' + $code + '/meta/hostUid').val() || ($uid == auth.uid && !data.exists() && root.child('sessions/' + $code + '/meta/hostUid').exists())",
+            ".validate": "newData.hasChildren(['nick'])",
+            "nick": {
+              ".write": "$uid == auth.uid && data.parent().child('removed').val() != true",
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+            },
+            "connected": {
+              ".write": "$uid == auth.uid",
+              ".validate": "newData.isBoolean()"
+            },
+            "lastSeen": {
+              ".write": "$uid == auth.uid",
+              ".validate": "newData.isNumber() && newData.val() <= now"
+            },
+            "joinedAt": { ".validate": "newData.isNumber() && newData.val() <= now" },
+            "role": { ".validate": "newData.val() == 'spectator' || (newData.val() == 'creator' && auth.uid == root.child('sessions/' + $code + '/meta/hostUid').val())" },
+            "slot": { ".validate": "auth.uid == root.child('sessions/' + $code + '/meta/hostUid').val() && (newData.val() == 'palette' || newData.val() == 'form' || newData.val() == 'motion' || newData.val() == 'texture' || newData.val() == 'mood')" },
+            "queuePos": { ".validate": "newData.isNumber() && (newData.val() == now || auth.uid == root.child('sessions/' + $code + '/meta/hostUid').val())" },
+            "isBot": { ".validate": "newData.val() == true && auth.uid == root.child('sessions/' + $code + '/meta/hostUid').val()" },
+            "removed": { ".validate": "newData.val() == true && auth.uid == root.child('sessions/' + $code + '/meta/hostUid').val()" },
+            "$other": { ".validate": false }
+          }
+        },
+        "round": {
+          ".write": "auth.uid == root.child('sessions/' + $code + '/meta/hostUid').val()",
+          ".validate": "newData.hasChildren(['id', 'status', 'durationMs', 'statusVersion'])",
+          "id": { ".validate": "newData.isString()" },
+          "sceneId": { ".validate": "newData.isString()" },
+          "promptId": { ".validate": "newData.isString()" },
+          "promptText": { ".validate": "newData.isString() && newData.val().length <= 120" },
+          "seed": { ".validate": "newData.isNumber()" },
+          "durationMs": { ".validate": "newData.val() == 60000 || newData.val() == 90000 || newData.val() == 120000" },
+          "status": { ".validate": "newData.val() == 'lobby' || newData.val() == 'live' || newData.val() == 'locked' || newData.val() == 'rating' || newData.val() == 'reveal'" },
+          "startsAt": { ".validate": "newData.isNumber()" },
+          "lockedAt": { ".validate": "newData.isNumber()" },
+          "ratingEndsAt": { ".validate": "newData.isNumber()" },
+          "statusVersion": { ".validate": "newData.isNumber()" },
+          "slots": {
+            "$role": { ".validate": "($role == 'palette' || $role == 'form' || $role == 'motion' || $role == 'texture' || $role == 'mood') && newData.isString() && newData.parent().parent().parent().child('players/' + newData.val()).exists()" }
+          },
+          "$other": { ".validate": false }
+        },
+        "choices": {
+          ".write": "auth.uid == root.child('sessions/' + $code + '/meta/hostUid').val()",
+          "$role": {
+            ".write": "root.child('sessions/' + $code + '/round/status').val() == 'live' && root.child('sessions/' + $code + '/round/slots/' + $role).val() == auth.uid && now < root.child('sessions/' + $code + '/round/startsAt').val() + root.child('sessions/' + $code + '/round/durationMs').val()",
+            ".validate": "($role == 'palette' || $role == 'form' || $role == 'motion' || $role == 'texture' || $role == 'mood') && newData.hasChildren(['optionId', 'uid', 'at'])",
+            "optionId": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 32" },
+            "uid": { ".validate": "newData.val() == auth.uid || auth.uid == root.child('sessions/' + $code + '/meta/hostUid').val()" },
+            "at": { ".validate": "newData.isNumber() && newData.val() <= now" },
+            "$other": { ".validate": false }
+          }
+        },
+        "events": {
+          ".write": "auth.uid == root.child('sessions/' + $code + '/meta/hostUid').val()",
+          "$eventId": {
+            ".write": "!data.exists() && root.child('sessions/' + $code + '/round/status').val() == 'live' && root.child('sessions/' + $code + '/round/slots/' + newData.child('role').val()).val() == auth.uid && now < root.child('sessions/' + $code + '/round/startsAt').val() + root.child('sessions/' + $code + '/round/durationMs').val()",
+            ".validate": "newData.hasChildren(['t', 'role', 'optionId', 'uid'])",
+            "t": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "role": { ".validate": "newData.val() == 'palette' || newData.val() == 'form' || newData.val() == 'motion' || newData.val() == 'texture' || newData.val() == 'mood'" },
+            "optionId": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 32" },
+            "uid": { ".validate": "newData.val() == auth.uid || auth.uid == root.child('sessions/' + $code + '/meta/hostUid').val()" },
+            "$other": { ".validate": false }
+          }
+        },
+        "ratings": {
+          ".write": "auth.uid == root.child('sessions/' + $code + '/meta/hostUid').val()",
+          "$uid": {
+            ".write": "$uid == auth.uid && !data.exists() && root.child('sessions/' + $code + '/round/status').val() == 'rating' && now < root.child('sessions/' + $code + '/round/ratingEndsAt').val() + 3000 && root.child('sessions/' + $code + '/players/' + $uid + '/role').val() == 'spectator' && root.child('sessions/' + $code + '/players/' + $uid + '/removed').val() != true",
+            ".validate": "newData.val() == 1 || newData.val() == 2 || newData.val() == 3 || newData.val() == 4 || newData.val() == 5"
+          }
+        },
+        "results": {
+          ".write": "auth.uid == root.child('sessions/' + $code + '/meta/hostUid').val()",
+          "judgeRequestedAt": {
+            ".write": "!data.exists() && auth.uid == root.child('sessions/' + $code + '/meta/screenUid').val()",
+            ".validate": "newData.isNumber() && newData.val() <= now"
+          },
+          "author": { ".validate": "newData.child('score').isNumber()" },
+          "audience": { ".validate": "newData.hasChildren(['count', 'method'])" },
+          "combined": { ".validate": "newData.isNumber()" },
+          "ai": { ".validate": false },
+          "verdict": { ".validate": false },
+          "snapshotUrl": { ".validate": false },
+          "reimagined": { ".validate": false },
+          "$other": { ".validate": false }
+        },
+        "rounds": {
+          ".write": "auth.uid == root.child('sessions/' + $code + '/meta/hostUid').val()"
+        }
+      }
+    }
+  }
+}

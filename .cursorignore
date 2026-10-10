@@ -1,0 +1,4 @@
+.env*
+!.env.example
+.runtimeconfig.json
+service-account*.json

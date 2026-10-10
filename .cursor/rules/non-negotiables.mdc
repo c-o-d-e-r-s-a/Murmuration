@@ -1,0 +1,14 @@
+---
+description: Murmuration non-negotiables
+alwaysApply: true
+---
+
+Details: [brief §6, §17](../../docs/00-brief.md), [DECISIONS](../../docs/DECISIONS.md), [AGENTS.md](../../AGENTS.md).
+
+- **Smoothing:** every live param has a target (network) and a current (drawn); the render loop eases current to target. Never draw network values directly.
+- **No live AI in a round:** Gemini/ElevenLabs only after lock, from Functions, behind `/config/flags` with a canned fallback.
+- **Keys server-side only.** Never put secrets in `web/` or `shared/`; never commit `.env*`.
+- **Tiny payloads:** choice = `{optionId, uid, at}`; no image or stream data in RTDB.
+- **No brand logos or trademarked characters.** Generic original art and wording.
+- **Scope:** nothing outside P0–P3 ([BUILD_ORDER](../../docs/BUILD_ORDER.md)); solo build, cut line is the solo cut line in BUILD_ORDER §8 (D-01).
+- Host is sole writer of round state; timers use server time; render is seeded and deterministic.

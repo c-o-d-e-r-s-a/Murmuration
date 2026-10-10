@@ -1,0 +1,11 @@
+rules_version = '2';
+
+// DATA_SCHEMA §7: functions write via Admin SDK; clients only read.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{folder}/{allPaths=**} {
+      allow read: if folder in ['snapshots', 'verdicts', 'reimagined', 'fallback', 'narration'];
+      allow write: if false;
+    }
+  }
+}

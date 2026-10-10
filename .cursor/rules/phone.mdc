@@ -1,0 +1,14 @@
+---
+description: Phone page (/play) and host page
+globs: web/play/**,web/host/**,web/lib/nick.ts
+alwaysApply: false
+---
+
+See [ARCHITECTURE §4–5](../../docs/ARCHITECTURE.md) [ROUND_STATE_MACHINE](../../docs/ROUND_STATE_MACHINE.md), and [CONTRACTS](../../docs/CONTRACTS.md).
+
+- `/play` writes only own nick, own role's choice, own rating (write-once). Never write round state or slots.
+- `/host` is the sole writer of round state; re-derive state from timestamps on load (refresh-safe).
+- Large one-handed touch targets, `navigator.vibrate` haptics, no app, no account.
+- One tap = one tiny discrete write; no drag streams.
+- Nicknames: blocklist + length limit before write; they never go to AI calls.
+- Countdown derives from server time (`serverNow()`), never client clocks alone.

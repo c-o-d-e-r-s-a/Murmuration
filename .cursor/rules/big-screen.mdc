@@ -1,0 +1,14 @@
+---
+description: Big screen, renderer, and dev harness
+globs: web/screen/**,web/lib/renderer/**,web/dev/**,shared/presets.ts,shared/sceneLoader.ts
+alwaysApply: false
+---
+
+See [ARCHITECTURE §6](../../docs/ARCHITECTURE.md) and [D-16, D-17, D-20](../../docs/DECISIONS.md).
+
+- 60fps budget: cap `pixelDensity` (1.5), draw base art once to an offscreen layer, no per-frame allocations, adaptive particle count.
+- Seed everything from `round.seed` (`randomSeed`/`noiseSeed`); no `Math.random` or wall-clock in the live layer.
+- Laptop display, no projector (D-38): design at 1920×1080, size chrome in `vw`/`vh` so 1280×720 keeps the composition; type readable by a group at ~2 m.
+- Flicker ≤3 Hz, no full-screen strobe; enforced in presets, not overridable.
+- `/screen` is passive: renders, plays audio, uploads the snapshot. No round-state writes.
+- `/dev` and `/screen` share the same renderer module.
