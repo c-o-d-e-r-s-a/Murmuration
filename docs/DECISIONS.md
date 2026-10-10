@@ -69,6 +69,7 @@ Format: **D-nn — decision.** Why. (Affects: docs.)
 
 - **D-39 — Solo P0 scene picker reads bundled scenes; RTDB gallery is P3.** `/host` lists `BUNDLED_SCENES` (rush-hour, diner, vigilante); no `/gallery` node. (Affects: BUILD_ORDER, DATA_SCHEMA.)
 - **D-41 — One 12 s Gemini budget per judge call.** `judgeRound` tries `geminiModel`, then `geminiFallbackModel`, on any error or out-of-spec reply, both inside one `GEMINI_TIMEOUT_MS` deadline (an attempt needs ≥ 1 s left); then canned. A sequential 12 s + 12 s would overrun the 25 s rating cap. SDK path (`@google/genai` 2.28.0 `interactions.create`) passed the R6 smoke test, so no REST path. (Affects: CONTRACTS §8, RISKS §2.)
+- **D-42 — T7 Reset keeps the current slots and queue.** The round was aborted, so Creators haven't had their turn; only T6 New round rotates (D-12). (Affects: ROUND_STATE_MACHINE §2.)
 - **D-40 — Brand-title exception.** Only the `title` field of the diner and vigilante demo scenes may read "Waffle House at 3 AM" and "Batman in Atlanta". Ids, art, labels, and prompts stay generic. `/verify` allows these two titles. `scene.title` is never sent to Gemini or ElevenLabs; AI prompts use the scene's generic `description` ("a roadside diner at night", "a caped vigilante over a city skyline"). (Affects: CONTRACTS §8 judge input + Reimagined prompt, D-36, AGENTS.md rule 6.)
 
 ## Open items (to be settled at the event)

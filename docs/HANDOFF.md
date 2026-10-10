@@ -1,34 +1,26 @@
 # HANDOFF
 
 ## Done this session
-- Verify block (BUILD_ORDER §8 h16–h22: P1-1, P1-3, P1-4) run against prod `https://murmuration-33d60.web.app` with session `M2DS` (3 bot Creators, 10 bot Spectators, 60 s rounds).
-- Deployed: hosting + database rules (unchanged) + functions (unchanged, skipped). `/config/flags/aiEnabled` toggled false then back to true (final state: true).
-- One bug fixed: `web/screen/index.html` `.verdict` overflowed the scoreboard (bottom at 1292 px on 1080p, 868 px on 720p). It is now `position: fixed`, bottom-left, 50vw wide, clamped to 4 lines, clear of the board and credits.
+- P1-5 (solo, 3 slots): role rotation on New round + late joiners ([BUILD_ORDER](BUILD_ORDER.md)).
+- `web/host/machine.ts`: pure `rotate(players, slots, roles)`. `web/host/main.ts` `newRound()` (T6 only) writes `round/slots`, `players/*/{slot,role}` and the Creators' new `queuePos` in the same multi-path update as the archive.
+- `web/host/machine.test.ts`: asserts for 6 players/2 rounds, 8/3 rounds, late joiner, humans-before-bots, removed skipped.
+- Docs: D-42 (T7 Reset keeps slots and queue); ROUND_STATE_MACHINE §2 T7 row fixed.
 
 ## In progress / next
-- Next per [§8](BUILD_ORDER.md): P1-5 rotation, bots, refresh test, P1-9 Tiger mirror (`web/host/main.ts` T6 is where rotation goes).
+- Next per [§8](BUILD_ORDER.md): bots/refresh test, P1-9 Tiger mirror. First do the manual rotation check against a real session (steps in the chat report); not run against RTDB yet.
 
 ## Verify status
-- `/verify`: typecheck, lint, `npm test`, `vite build` all pass (re-run after the CSS fix).
-- aiEnabled=false: reveal 13.7 s after lock, canned `ai` 6.0 + canned verdict (P1-1 ✓).
-- aiEnabled=true: real score from `gemini-3.8-flash`, `fallback:false`; reveal 15.3 s after the rating window opened (P1-1 ✓).
-- 10 bot votes: trimmed mean 8.25 matches `scoring.ts` by hand; combined = equal-weight mean ✓ (P1-3).
-- Phone at 390 px: rating buttons 64×64, vote write-once (second tap ignored, stored 4) (P1-3).
-- ROUND_STATE_MACHINE §5: judge-fail path ✓; screen reload right after lock (T4a) judged once and revealed ✓; near-simultaneous bot writes both logged in `events` ✓.
-- Rules unchanged; rules emulator not run (no Java on PATH).
+- `/verify`: typecheck, lint, `npm test`, build all pass; `npx tsx web/host/machine.test.ts` ok.
+- Rules emulator not run (no Java); rules unchanged. Host `queuePos` write is allowed by the existing `queuePos` validate (host uid), but not exercised live.
 
 ## Decisions / docs
-- None new. ARCHITECTURE §4 still says `results/snapshotRequested`; real key is `judgeRequestedAt`.
+- D-42 added. Late joiners already sort last (`/play` and `addBots` write `queuePos: serverTimestamp()`); confirmed, no change.
 
 ## Blockers / open items
-- Real-phone run over the LAN not done (no phone here); only a 390 px emulated tab was used.
-- No audio / "manual Play" (P1-2 not built), so the P1-4 "audio unlock" clause is not testable yet.
-- `meta.screenUid` is never written, so `/screen` must share browser + hostname with `/host`.
-- Custom domain `mybossdoeslameicebreakers.work/host/` serves over HTTPS, but a headless fetch showed `auth/network-request-failed`; confirm anonymous sign-in works there from a real browser (Auth authorized domains).
-- Pre-demo items not applicable yet: fallback clips (P1-8), host phone/hotspot checks.
+- Carried over: real-phone LAN run, P1-2 audio, `meta.screenUid`, custom-domain auth check (see git history of this file).
 
 ## Gotchas
-- `/screen` must be the foreground tab when a round locks: a hidden tab never captures, so no judge call, no AI score, and the reveal waits for the 25 s cap. `/host` is fine hidden (worker tick).
-- At 1280×720 the scoreboard bottom is ~10 px over the credits strip (pre-existing, not fixed).
-- Test data left in RTDB session `M2DS` and Storage `snapshots/M2DS/`.
-- Live judge self-check: `npx tsx --env-file=functions/.secret.local functions/src/judgeRound.test.ts`. Rules tests (Java 21): `npx -y firebase-tools@latest emulators:exec --only database "npx tsx database.rules.test.mts"`.
+- Creators go to `max+1..+3`, where max includes any late joiner's timestamp, so a late joiner queues ahead of the Creators who just played, behind everyone already waiting.
+- Bots rank after all humans; with ≥3 humans, bot Creators are rotated out on New round. With <3 humans, bots fill the gap.
+- Not done (out of scope): host "Assign to" moving `queuePos` to front (§4 override), skipping disconnected players, P1-10.
+- Test data still in RTDB session `M2DS`.

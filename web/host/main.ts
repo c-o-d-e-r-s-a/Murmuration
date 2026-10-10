@@ -8,10 +8,10 @@ import type { Choices, Player, Rating, Results, Role, Round, Scene, SessionMeta 
 import { BUNDLED_SCENES } from "../../shared/sceneLoader";
 import { audienceScore, authorScore, combined } from "../../shared/scoring";
 import { db, onValue, ref, serverNow, serverTimestamp, set, signIn, update } from "../lib/firebase";
-import { botPlan, drawPrompt, due, ratingCap } from "./machine";
+import { botPlan, drawPrompt, due, ratingCap, rotate } from "./machine";
 
 // B2 lobby (session, QR, scene, duration, players, slots, bots) + B4 state machine T1–T8 (ROUND_STATE_MACHINE §2, D-10).
-// Solo scope (BUILD_ORDER §8): only three assignable roles; texture/mood stay neutral. Rotation is P1-5; ratings/judge/reimagine/Tiger are P1.
+// Solo scope (BUILD_ORDER §8): only three assignable roles; texture/mood stay neutral. Ratings/judge/reimagine/Tiger are P1.
 const SLOT_ROLES: Role[] = ["palette", "form", "motion"];
 const CODE_KEY = "murmuration.hostCode";
 
@@ -155,7 +155,7 @@ function mount(code: string) {
     write(up);
   }
 
-  /** Shared by T6 and T7: back to lobby with a new preview prompt; slots stay (rotation is P1-5). */
+  /** Shared by T6 and T7: back to lobby with a new preview prompt; slots stay; T6 rotates them in newRound(), T7 keeps them (D-42). */
   function toLobby(): Record<string, unknown> {
     const sc = scene();
     return {
@@ -172,7 +172,16 @@ function mount(code: string) {
     busy = true;
     get(ref(db, `${base}/events`)).then((s) => {
       const playersSnapshot = Object.fromEntries(Object.entries(players).map(([uid, p]) => [uid, { nick: p.nick, slot: p.slot ?? null }]));
-      write({ [`rounds/${round!.id}`]: { round, choices, events: s.val(), ratings, results, playersSnapshot }, ...toLobby() });
+      const next = rotate(players, round!.slots ?? {}, SLOT_ROLES);
+      const up: Record<string, unknown> = { "round/slots": SLOT_ROLES.some((r) => next.slots[r]) ? next.slots : null };
+      for (const [uid, p] of Object.entries(players)) {
+        if (p.removed) continue;
+        const slot = SLOT_ROLES.find((r) => next.slots[r] === uid) ?? null;
+        up[`players/${uid}/slot`] = slot;
+        up[`players/${uid}/role`] = slot ? "creator" : "spectator";
+        if (next.queuePos[uid]) up[`players/${uid}/queuePos`] = next.queuePos[uid];
+      }
+      write({ [`rounds/${round!.id}`]: { round, choices, events: s.val(), ratings, results, playersSnapshot }, ...toLobby(), ...up });
     }, (e) => {
       busy = false;
       errEl.textContent = `archive read failed: ${e.message}`;

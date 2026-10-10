@@ -26,6 +26,28 @@ export function drawPrompt(scene: Scene, used: Record<string, true> | undefined,
   return { prompt: from.length ? from[Math.floor(rand() * from.length)] : null, reset: !fresh.length };
 }
 
+type Rotating = { queuePos: number; isBot?: boolean; removed?: boolean };
+
+/**
+ * T6 rotation (ROUND_STATE_MACHINE §4, D-12), solo: current Creators go to the back in slot order (max+1..), then the first
+ * `roles.length` of the queue fill `roles` in order. Humans queue before bots, so bots only fill what humans can't.
+ * Returns the new slots and the queuePos writes (current Creators only).
+ */
+export function rotate<R extends string>(players: Record<string, Rotating>, slots: Partial<Record<R, string>>, roles: readonly R[]) {
+  const live = Object.entries(players).filter(([, p]) => !p.removed);
+  const pos: Record<string, number> = Object.fromEntries(live.map(([uid, p]) => [uid, p.queuePos ?? 0]));
+  let max = Math.max(0, ...Object.values(pos));
+  const queuePos: Record<string, number> = {};
+  for (const role of roles) {
+    const uid = slots[role];
+    if (uid && uid in pos) pos[uid] = queuePos[uid] = ++max;
+  }
+  const order = live.map(([uid]) => uid).sort((a, b) => Number(!!players[a].isBot) - Number(!!players[b].isBot) || pos[a] - pos[b]);
+  const next: Partial<Record<R, string>> = {};
+  roles.forEach((role, i) => { if (order[i]) next[role] = order[i]; });
+  return { slots: next, queuePos };
+}
+
 /** Bot pick times (ms since start): one at ~5 s, then 1–2 more before the last 10 s (ROUND_STATE_MACHINE §5). */
 export function botPlan(durationMs: number, rand = Math.random): number[] {
   const times = [4000 + rand() * 3000];
