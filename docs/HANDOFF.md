@@ -1,28 +1,29 @@
 # HANDOFF
 
 ## Done this session
-- B3 `/play` + choice write ([BUILD_ORDER](BUILD_ORDER.md) §8 solo scope). Lane B.
-- `web/play/main.ts` (replaced B1 smoke): join form (optional nick), Spectator waiting text, Creator screen with 4 option buttons from the bundled scene, server-time countdown, haptics (30 tap, 60 lock, `[40,60,40]` on role card).
-- Tap = one multi-path `update` of `choices/{role}` + `events/{push}`; `at` uses `serverTimestamp()` (rules require `at <= now`), `t` from `serverNow()` clamped.
-- `web/lib/nick.ts` (+ `nick.test.ts`): trim, 16-char cap, blocklist, `Guest-xxxx` fallback.
-- No rules/contracts/package.json changes: existing `database.rules.json` already covers B3.
+- B4 state machine on `/host` ([BUILD_ORDER](BUILD_ORDER.md) §8 solo scope). Lane B.
+- `web/host/main.ts`: T2 Start (guard ≥ 3 slots, seed, `startsAt`, clears last round's data, `players/*/role` from slots), T3 lock + `results.author`, T4 settle, T5 reveal with 3 s extensions while `verdict.ready` is false (cap: lock + 26.5 s) + `results.audience`/`combined`, T6 New round (archive to `rounds/{id}`), T7 Reset (confirm, releases the aborted prompt), T8 Reroll. Every lobby entry (T1, T6, T7, scene change) draws a preview prompt.
+- 250 ms tick re-derives steps from server timestamps; acts only after all 6 listeners have fired once. Stale `round` snapshots (lower `statusVersion`) are dropped; `busy` stops double-fires.
+- Bot Creators pick at ~5 s, then 1–2 changes (writes `choices` + `events` as host). Host reload skips picks already past.
+- `web/host/machine.ts` (pure: `due`, `drawPrompt`, `botPlan`, `ratingCap`) + `machine.test.ts`.
 
 ## Next
-- B4 state machine in `web/host/main.ts` (T1–T8, timers, `statusVersion`, prompt draw, bot choices). Until it exists nothing sets `round.status = "live"`, so the Creator buttons can only be exercised by hand-editing `round` in the console.
+- B5 `/screen` (`web/screen/main.ts`): subscribe to `round`/`choices`/`players`/`results`, render via Track A, lobby/live/lock/reveal views.
 
 ## Verify status
-- typecheck, lint, test, build pass. `npx tsx web/lib/nick.test.ts` passes (not chained into `npm test`; package.json is off limits). Manual 2-phone check not run.
+- typecheck, lint, test, build all pass. `npx tsx web/host/machine.test.ts` passes (not in `npm test`; package.json is off limits).
+- Browser run with 3 bots on session `5C2P`: lobby → live → locked → rating → reveal → lobby, host refreshed during live and rating, resumed both times. Archive and reset checked in RTDB. Locked/reveal-state refresh and real-phone taps not run.
 
 ## Decisions / docs
-- None new.
+- None new. T6 keeps the same slots; queue rotation is P1-5.
 
 ## Blockers / open items
-- `package.json` `test` runs only scoring; suggest `tsx shared/scoring.test.ts && tsx web/lib/nick.test.ts && ...`.
-- QR/URL uses `location.origin`; use LAN IP or deployed URL for phones.
+- No `judgeRound` yet (P1-1), so every rating window runs to the 25 s cap.
+- `package.json` `test` should chain `web/lib/nick.test.ts` and `web/host/machine.test.ts`.
 
 ## Gotchas
-- Phone role comes from `round.slots` (host-written), not `players/{uid}.role`.
-- Rejoin: if `players/{uid}` exists the join form is skipped and the stored nick is kept (nick edit UI not built).
-- Spectators get no rating UI yet (P1-3). Texture/mood have no phone UI (solo scope).
-- Nick blocklist is substring-only; digits/leetspeak not normalised (`ponytail:` ceiling); host can rename.
-- Old B1 `sessions/TEST` may still exist in prod RTDB.
+- No bot Spectator votes (P1-3 owns that); audience is `method:"none"` until ratings exist.
+- No `reimagineRound`/`logRoundEvents` calls at T5 (P1-7, P1-9). No `gallery.plays` increment at Start.
+- Two `/host` tabs on one session can both fire a timer step (local `busy` guard only); keep one tab.
+- `serverNow()` offset is 0 for the first few hundred ms after load; a badly skewed laptop clock could fire one step early on refresh.
+- Test sessions `5C2P` (and old `TEST`) are in prod RTDB.
