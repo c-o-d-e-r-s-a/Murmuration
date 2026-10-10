@@ -1,26 +1,26 @@
 # HANDOFF
 
 ## Done this session
-- A2 ([BUILD_ORDER](BUILD_ORDER.md)), solo scope (§8), color wash only. Lane A.
-- `web/lib/renderer/params.ts`: `resolveTarget(options, choices)` (scene options + choices -> full `RenderParams`, unfilled/unknown -> neutral via `presetParams`), `toCurrent(target)` (snap), `ease(cur, target, dtMs)` (exponential, `EASE_NUMERIC_MS` numerics, `EASE_PALETTE_MS` colors as RGB; mutates, no allocations besides hex parse).
-- `web/lib/renderer/sketch.ts`: `mountRenderer(parent, {background, swatches?})` -> `{setTarget}`; p5 instance, DPR cap 1.5, 16:9 fit to parent; draws background + `colors[0]` wash at `washOpacity`; `swatches` draws the 4 eased colors (dev aid).
-- `web/dev/main.ts`: palette buttons + washOpacity slider. **Mock**: options built from `PRESETS` (id = presetId) until `shared/scenes` + `sceneLoader` exist; background mocked `#777777`.
-- Check: `web/lib/renderer/params.test.ts` (`npx tsx web/lib/renderer/params.test.ts`).
+- Content rows (option labels, prompts, ONE scene) + loader, solo scope ([BUILD_ORDER](BUILD_ORDER.md) §8). Content lane + lane A.
+- `shared/scenes/rush-hour.json`: 4 options x 5 roles (ranks 10/7/4/1), 10 prompts, `baseArt.shapes: []`, background `#0f0e14`. Texture/mood all point at `tex-neutral`/`mood-neutral`.
+- `shared/sceneLoader.ts`: `loadScene(raw)` (throws `scene "id": ...`), `BUNDLED_SCENES` (rush-hour). Checks 4/role, unique ranks in 10/7/4/1, preset exists and matches role, unique option ids, label <= `OPTION_LABEL_MAX`, prompt <= `PROMPT_TEXT_MAX`, strips protected overrides; custom: strips overrides + hotspot.
+- `web/dev/main.ts`: uses `BUNDLED_SCENES[0]` options + `baseArt.background` (PRESETS mock removed).
+- Check: `npx tsx shared/sceneLoader.test.ts`.
 
 ## Next
-- A3 base-art layer in `web/lib/renderer/sketch.ts` (pass the scene in `mountRenderer`, replace `opts.background` with `scene.baseArt.background`). Also `shared/sceneLoader.ts` (stripProtected + reject unknown presetId).
+- A3 base art: fill `rush-hour.json` `baseArt.shapes`; pass the scene into `mountRenderer` (`web/lib/renderer/sketch.ts`) instead of `background`.
 
 ## Verify status
-- typecheck pass, lint pass (0 warnings), test pass (scoring only), build pass (dev chunk >500 kB warning from p5, harmless). Renderer self-check passes manually.
+- typecheck, lint, build pass; `npm test` (scoring) passes; all four `*.test.ts` (scoring, presets, sceneLoader, renderer params) pass via tsx.
 
 ## Decisions / docs
-- None new. Enums/moodWord snap instead of crossfade (ponytail note in `ease`; A4 adds the weight). Colors lerp in sRGB, not perceptual (ponytail note).
+- None new. Labels use the art-direction cap (18), loader enforces the contract cap (28, D-/DATA_SCHEMA).
 
 ## Blockers / open items
-- `package.json` `test` runs only `scoring.test.ts`; presets and renderer self-checks are not wired in (not allowed to edit). Suggest `tsx shared/scoring.test.ts && tsx shared/presets.test.ts && tsx web/lib/renderer/params.test.ts`.
+- `package.json` `test` still runs only scoring; suggest `tsx shared/scoring.test.ts && tsx shared/presets.test.ts && tsx shared/sceneLoader.test.ts && tsx web/lib/renderer/params.test.ts`.
 
 ## Gotchas
-- `ease` uses p5 `deltaTime` (wall clock); fine for smoothing, but A4's seeded motion must use round time `t`, not `deltaTime`.
-- First `setTarget` snaps current to target (screen refresh rule, ROUND_STATE_MACHINE §5); later calls ease.
-- Neutral mood `moodWord` is empty; neutral motion is still (rate/area 0).
+- Only 4 non-neutral palettes exist, none red, so "Brake-Light Red" (brief example) isn't an option; labels were mapped to the actual preset colors.
+- Texture/mood options are all one preset each, so ranks affect author score only, not visuals.
+- Never `Get-ChildItem -Recurse *.test.ts` without excluding `functions/node_modules` (jest tests there fail).
 - Prod RTDB still has `sessions/TEST` from B1 smoke test.

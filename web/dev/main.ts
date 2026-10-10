@@ -1,23 +1,15 @@
-import { ROLES } from "../../shared/contracts";
-import type { Choices, Scene } from "../../shared/contracts";
-import { PRESETS } from "../../shared/presets";
+import type { Choices } from "../../shared/contracts";
+import { BUNDLED_SCENES } from "../../shared/sceneLoader";
 import { resolveTarget } from "../lib/renderer/params";
 import { mountRenderer } from "../lib/renderer/sketch";
 
-// Mock scene options until shared/scenes + sceneLoader exist: one option per preset, id = presetId.
-const options = Object.fromEntries(
-  ROLES.map((role) => [
-    role,
-    Object.values(PRESETS)
-      .filter((x) => x.role === role)
-      .map((x) => ({ id: x.id, presetId: x.id, label: x.label, authorScore: 10 as const })),
-  ]),
-) as Scene["options"];
+const scene = BUNDLED_SCENES[0]; // rush-hour
+const options = scene.options;
 
 const app = document.querySelector<HTMLElement>("#app")!;
 const controls = document.createElement("div");
 app.append(controls);
-const renderer = mountRenderer(app, { background: "#777777", swatches: true });
+const renderer = mountRenderer(app, { background: scene.baseArt.background, swatches: true });
 
 let choices: Choices = {};
 const slider = Object.assign(document.createElement("input"), { type: "range", min: "0", max: "1", step: "0.01" });

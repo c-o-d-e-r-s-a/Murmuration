@@ -1,0 +1,56 @@
+{
+  "id": "rush-hour",
+  "title": "Atlanta Rush Hour",
+  "author": "Team Murmuration",
+  "kind": "demo",
+  "version": 1,
+  "baseArt": {
+    "viewBox": [0, 0, 1920, 1080],
+    "background": "#0f0e14",
+    "shapes": []
+  },
+  "options": {
+    "palette": [
+      { "id": "pal-connector", "presetId": "pal-neon", "label": "Midnight Connector", "authorScore": 10 },
+      { "id": "pal-sodium", "presetId": "pal-sodium", "label": "Highway Sodium", "authorScore": 7 },
+      { "id": "pal-sunset", "presetId": "pal-bruise", "label": "Bruised Sunset", "authorScore": 4 },
+      { "id": "pal-haze", "presetId": "pal-dawn", "label": "Glass Tower Haze", "authorScore": 1 }
+    ],
+    "form": [
+      { "id": "form-smog", "presetId": "form-fog", "label": "Connector Smog", "authorScore": 10 },
+      { "id": "form-tailpipe", "presetId": "form-sparks", "label": "Tailpipe Sparks", "authorScore": 7 },
+      { "id": "form-steam", "presetId": "form-steam", "label": "Asphalt Steam", "authorScore": 4 },
+      { "id": "form-gravel", "presetId": "form-dust", "label": "Gravel Dust", "authorScore": 1 }
+    ],
+    "motion": [
+      { "id": "motion-brake", "presetId": "motion-pulse", "label": "Brake-Light Pulse", "authorScore": 10 },
+      { "id": "motion-crawl", "presetId": "motion-drift", "label": "Slow Roll", "authorScore": 7 },
+      { "id": "motion-weave", "presetId": "motion-sway", "label": "Lane Weave", "authorScore": 4 },
+      { "id": "motion-stutter", "presetId": "motion-flicker", "label": "Signal Stutter", "authorScore": 1 }
+    ],
+    "texture": [
+      { "id": "tex-asphalt", "presetId": "tex-neutral", "label": "Wet Asphalt", "authorScore": 10 },
+      { "id": "tex-grime", "presetId": "tex-neutral", "label": "Windshield Grime", "authorScore": 7 },
+      { "id": "tex-dash", "presetId": "tex-neutral", "label": "Dashboard Dust", "authorScore": 4 },
+      { "id": "tex-vinyl", "presetId": "tex-neutral", "label": "Sun-Baked Vinyl", "authorScore": 1 }
+    ],
+    "mood": [
+      { "id": "mood-zen", "presetId": "mood-neutral", "label": "Zen Gridlock", "authorScore": 10 },
+      { "id": "mood-home", "presetId": "mood-neutral", "label": "Almost Home", "authorScore": 7 },
+      { "id": "mood-honk", "presetId": "mood-neutral", "label": "Honk Symphony", "authorScore": 4 },
+      { "id": "mood-rage", "presetId": "mood-neutral", "label": "Road Rage", "authorScore": 1 }
+    ]
+  },
+  "prompts": [
+    { "id": "p1", "text": "Gridlock" },
+    { "id": "p2", "text": "Calm but urgent" },
+    { "id": "p3", "text": "Make the Connector feel almost peaceful" },
+    { "id": "p4", "text": "Joyful, without any fog" },
+    { "id": "p5", "text": "Hot asphalt, exhaust, and a dying radio signal" },
+    { "id": "p6", "text": "It is six PM and you are already late" },
+    { "id": "p7", "text": "Peach cobbler traffic: sweet, slow, and sticky" },
+    { "id": "p8", "text": "Everyone swears the exit is only two miles away" },
+    { "id": "p9", "text": "A traffic jam that feels like a lullaby" },
+    { "id": "p10", "text": "I-85 on a Friday, but make it beautiful" }
+  ]
+}
