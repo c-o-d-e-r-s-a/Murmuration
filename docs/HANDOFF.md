@@ -1,27 +1,28 @@
 # HANDOFF
 
 ## Done this session
-- B2 `/host` lobby ([BUILD_ORDER](BUILD_ORDER.md) §8 solo scope). Lane B, only `web/host/main.ts` changed.
-- T1 create session (4-char code, `meta` then `round` r0/lobby, sequential because the round rule reads stored `meta.hostUid`); resume via `?s=CODE` or `localStorage murmuration.hostCode`; foreign-host code errors out.
-- QR for `${origin}/play?s=CODE`, scene picker (`BUNDLED_SCENES`), duration (60/90/120), player list (presence dot, rename, remove, slot select), "Add 3 bots", "New session".
-- Slot writes are one multi-path update (`round/slots/*` + `players/*/slot|role`).
+- B3 `/play` + choice write ([BUILD_ORDER](BUILD_ORDER.md) §8 solo scope). Lane B.
+- `web/play/main.ts` (replaced B1 smoke): join form (optional nick), Spectator waiting text, Creator screen with 4 option buttons from the bundled scene, server-time countdown, haptics (30 tap, 60 lock, `[40,60,40]` on role card).
+- Tap = one multi-path `update` of `choices/{role}` + `events/{push}`; `at` uses `serverTimestamp()` (rules require `at <= now`), `t` from `serverNow()` clamped.
+- `web/lib/nick.ts` (+ `nick.test.ts`): trim, 16-char cap, blocklist, `Guest-xxxx` fallback.
+- No rules/contracts/package.json changes: existing `database.rules.json` already covers B3.
 
 ## Next
-- B3 `/play` (replace B1 smoke in `web/play/main.ts`): join with nick, spectator/creator screens, tap writes `choices` + `events`. Needs `web/lib/nick.ts` filter.
+- B4 state machine in `web/host/main.ts` (T1–T8, timers, `statusVersion`, prompt draw, bot choices). Until it exists nothing sets `round.status = "live"`, so the Creator buttons can only be exercised by hand-editing `round` in the console.
 
 ## Verify status
-- typecheck, lint, build pass; `npm test` (scoring only) passes. Manual 5-phone check not run by agent (needs deployed rules + phones).
+- typecheck, lint, test, build pass. `npx tsx web/lib/nick.test.ts` passes (not chained into `npm test`; package.json is off limits). Manual 2-phone check not run.
 
 ## Decisions / docs
 - None new.
 
 ## Blockers / open items
-- `package.json` `test` still runs only scoring (suggest chaining the other `*.test.ts`).
-- QR uses `location.origin`; on `localhost` phones can't reach it. Open `/host` via LAN IP or deployed URL.
+- `package.json` `test` runs only scoring; suggest `tsx shared/scoring.test.ts && tsx web/lib/nick.test.ts && ...`.
+- QR/URL uses `location.origin`; use LAN IP or deployed URL for phones.
 
 ## Gotchas
-- Only palette/form/motion are assignable (solo scope); texture/mood stay neutral.
-- Removal sets `removed: true` (never deletes); host list hides removed. Bots are `bot_n`, auto-take free slots.
-- Skipped: queuePos-to-front on assign (rotation, P1-5), prompt preview/reroll (B4), bot choices (B4), gallery picker (Integration).
-- `/play` B1 smoke creates `sessions/TEST`; prod RTDB still has it.
-- Host list skips re-render while a nick input is focused (blur to refresh).
+- Phone role comes from `round.slots` (host-written), not `players/{uid}.role`.
+- Rejoin: if `players/{uid}` exists the join form is skipped and the stored nick is kept (nick edit UI not built).
+- Spectators get no rating UI yet (P1-3). Texture/mood have no phone UI (solo scope).
+- Nick blocklist is substring-only; digits/leetspeak not normalised (`ponytail:` ceiling); host can rename.
+- Old B1 `sessions/TEST` may still exist in prod RTDB.
