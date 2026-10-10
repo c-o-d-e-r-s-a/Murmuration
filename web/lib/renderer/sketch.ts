@@ -8,7 +8,7 @@ import { createLive, mulberry32, REF_H, REF_W, stepLive, stepsAt } from "./live"
 import type { Live } from "./live";
 
 // clock: ms since round start (D-20); defaults to ms since mount. seed: round.seed.
-type Opts = { background: string; swatches?: boolean; baseArt?: Scene["baseArt"]; seed?: number; clock?: () => number };
+type Opts = { background: string; swatches?: boolean; baseArt?: Scene["baseArt"]; seed?: number; clock?: () => number; adaptive?: boolean };
 
 const GRAIN_TILE = 128;
 const rgba = ([r, g, b]: number[], a: number) => `rgba(${r | 0},${g | 0},${b | 0},${a})`;
@@ -21,6 +21,9 @@ export function mountRenderer(parent: HTMLElement, opts: Opts) {
   let grain: CanvasPattern | null = null;
   const sprite = Object.assign(document.createElement("canvas"), { width: 64, height: 64 }); // soft particle, tinted per frame
   const seed = opts.seed ?? 1;
+  // A5: smoothed frame time drives how many of the (always simulated) particles are drawn, so the sim stays deterministic.
+  const stats = { fps: 60, scale: 1, drawn: 0 };
+  let ms = 1000 / 60;
 
   // D-16: scene paths -> Path2D on an offscreen layer; viewBox scaled uniformly and centered, so resizing keeps the composition.
   const drawArt = (s: p5, shapes: Shape[], vb: number[]) => {
@@ -70,6 +73,12 @@ export function mountRenderer(parent: HTMLElement, opts: Opts) {
       if (opts.baseArt) drawArt(s, opts.baseArt.shapes, opts.baseArt.viewBox);
     };
     s.draw = () => {
+      if (s.deltaTime > 0 && s.deltaTime < 500) { // ignore hidden-tab gaps
+        ms += (s.deltaTime - ms) * 0.05;
+        stats.fps = 1000 / ms;
+        // ponytail: simple AIMD on draw count (floor 15%); upgrade path = also shed grain/vignette.
+        if (opts.adaptive) stats.scale = ms > 20 ? Math.max(0.15, stats.scale * 0.97) : ms < 17.5 ? Math.min(1, stats.scale + 0.002) : stats.scale;
+      }
       s.background(opts.background);
       if (!target) return;
       live ??= createLive(seed, cur);
@@ -101,7 +110,8 @@ export function mountRenderer(parent: HTMLElement, opts: Opts) {
       if (art) s.image(art, 0, 0, W, H);
 
       // Particles: soft kinds (fog, steam) are tinted sprites at low alpha; sharp kinds (sparks, dust) are small squares.
-      const n = Math.floor(cur.particleDensity * PARTICLE_CAP);
+      const n = Math.floor(cur.particleDensity * PARTICLE_CAP * stats.scale);
+      stats.drawn = n;
       const { fog, steam, sparks, dust } = live.pw;
       if (fog + steam > 0.01) {
         const sg = sprite.getContext("2d")!;
@@ -177,6 +187,7 @@ export function mountRenderer(parent: HTMLElement, opts: Opts) {
   });
 
   return {
+    stats,
     setTarget(t: RenderParams) {
       if (!cur) cur = toCurrent(t);
       target = t;

@@ -21,6 +21,7 @@ const renderer = mountRenderer(app, {
   baseArt: scene.baseArt,
   swatches: true,
   seed,
+  adaptive: frozenT === null && q.get("adaptive") !== "0", // ?adaptive=0 to measure raw fps
   clock: frozenT === null ? undefined : () => frozenT,
 });
 
@@ -51,6 +52,13 @@ for (const r of ROLES) {
 slider.oninput = () => apply(Number(slider.value));
 controls.append(" washOpacity ", slider);
 apply();
+
+const { stats } = renderer;
+const fpsEl = document.createElement("div");
+app.append(fpsEl);
+setInterval(() => {
+  fpsEl.textContent = `${stats.fps.toFixed(0)} fps · ${stats.drawn} particles drawn (${(stats.scale * 100).toFixed(0)}%) · ${app.querySelector("canvas")!.width}×${app.querySelector("canvas")!.height}px`;
+}, 500);
 
 if (frozenT !== null) {
   setTimeout(() => {

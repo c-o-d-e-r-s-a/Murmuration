@@ -1,29 +1,25 @@
 # HANDOFF
 
 ## Done this session
-- A4 live layer ([BUILD_ORDER](BUILD_ORDER.md) §3 Track A, §8 solo: 3 roles, no hotspots). Lane A only.
-- `web/lib/renderer/live.ts` (new): pure, seeded (mulberry32) live state stepped at fixed 1/60 s: 1200-particle pool (fog/steam/sparks/dust), per-kind crossfade weights for particle and motion kinds, integrated motion phase, motion light (no hotspots in solo, so motion drives one accent glow behind the skyline; rate/area re-capped at `FLICKER_MAX_HZ`/`FLICKER_MAX_AREA`).
-- `web/lib/renderer/sketch.ts`: steps `live` to `clock()` and draws wash, motion light, base art, particles, mood watermark (only if `moodWord`), grain (seeded tile, 12 Hz offset), vignette. New opts `seed`, `clock` (default ms since mount).
-- `web/lib/renderer/live.test.ts` (new): same seed + same events, identical state at t=30 s; caps hold against a bad target.
-- `web/dev/main.ts`: buttons for palette/form/motion; `?seed=&t=` freezes the clock and prints a pixel hash; `?palette=&form=&motion=` preselect option ids.
-- `web/screen/main.ts`: passes `seed: round.seed` (one line). `params.ts`: comment only.
+- A5 performance ([BUILD_ORDER](BUILD_ORDER.md) §3 Track A, §8 solo). Lane A only.
+- `web/lib/renderer/sketch.ts`: smoothed frame time -> `stats {fps, scale, drawn}` (returned from `mountRenderer`); opt-in `adaptive` option scales how many particles are *drawn* (15%..100%, drop ×0.97/frame when >20 ms, recover +0.002/frame when <17.5 ms). DPR cap (`PIXEL_DENSITY_CAP` 1.5) and once-drawn base art were already in place.
+- `web/dev/main.ts`: fps/particles/canvas-size readout; adaptive on unless `?t=` is set or `?adaptive=0`.
+- Earlier (A4): `live.ts` seeded live layer, `live.test.ts`, `?seed=&t=` pixel hash.
 
 ## Next
-- A5 (performance): DPR is already capped; add adaptive particles + fps counter in `/dev`. Note that adaptive count breaks pixel-identical replay unless it is frozen during a round.
-- Integration: `/screen` should pass `clock: () => serverNow() - round.startsAt` and remount (or reseed) per round, not per scene.
+- A6 is cut in solo plan. Next is B-track / integration. `/screen` should pass `clock: () => serverNow() - round.startsAt` and remount per round; decide whether to set `adaptive: true` there.
 
 ## Verify status
-- typecheck, lint, test, build pass. `npx tsx web/lib/renderer/live.test.ts` passes (not in `npm test`; `package.json` off-limits).
-- Browser: `/dev/?seed=7&t=30000&...` hash `3040444c` on two loads; seed 8 differs. Fog/sparks/glow look right; 61 fps at 1122×631.
+- typecheck, lint, test, build pass; `npx tsx web/lib/renderer/live.test.ts` passes.
+- 60 fps on the demo laptop at 1200 particles: NOT yet measured by me (see manual check).
 
 ## Decisions / docs
-- None new. Deviation worth a D-nn if kept: live layer uses its own seeded PRNG + sin-based drift instead of p5 `randomSeed`/`noise` (node-testable, per-instance). ARCHITECTURE §6 still says p5 random/noise.
+- None new. Adaptive only changes draw count; simulation always steps all 1200, so state stays deterministic (snapshot pixels may differ if adaptive sheds particles). Keep `adaptive` off on `/screen` unless the laptop needs it.
 
 ## Blockers / open items
-- `npm test` runs only `scoring.test.ts`; params/live/loader tests must be run by hand until `package.json` changes.
+- `npm test` only runs `scoring.test.ts` (`package.json` off-limits); run renderer tests by hand.
 
 ## Gotchas
-- `live` state is created on the first frame with a target; changing seed needs a new `mountRenderer`.
-- Catch-up after a long gap runs every missed step in one frame (~5k steps max per round).
-- With `?t=` frozen, buttons change target but nothing moves (no steps advance).
+- Sim cost (1200 particles stepped per frame) is not reduced by adaptive; only drawing is. If sim is the bottleneck, fps won't recover.
+- Frame time is read from p5 `deltaTime`; gaps >500 ms (hidden tab) are ignored.
 - Pixel hashes only match at the same window size and DPR.
