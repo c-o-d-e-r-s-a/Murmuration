@@ -62,7 +62,7 @@ async function start() {
     // ponytail: remounting leaks the old p5 instance; only one bundled scene today. Upgrade: p5.remove() on scene change.
     if (mounted?.sceneId !== scene.id) {
       $("#stage").replaceChildren();
-      mounted = { sceneId: scene.id, ...mountRenderer($("#stage"), { background: scene.baseArt.background, baseArt: scene.baseArt }) };
+      mounted = { sceneId: scene.id, ...mountRenderer($("#stage"), { background: scene.baseArt.background, baseArt: scene.baseArt, seed: round.seed }) };
     }
     const status = round.status;
     mounted.setTarget(resolveTarget(scene.options, status === "lobby" ? undefined : choices));

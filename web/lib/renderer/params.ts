@@ -42,7 +42,7 @@ export function ease(cur: Current, target: RenderParams, dtMs: number): void {
   for (const k in target) {
     if (k === "colors") continue;
     const v = target[k];
-    // ponytail: enums and the mood word snap; A4 adds a crossfade weight once particles/hotspots draw them.
+    // Enums and the mood word snap here; live.ts crossfades particle/motion kinds with per-kind weights.
     if (typeof v === "number") cur[k] += (v - cur[k]) * kNum;
     else cur[k] = v;
   }
