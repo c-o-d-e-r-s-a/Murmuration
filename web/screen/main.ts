@@ -1,6 +1,6 @@
 import QRCode from "qrcode";
-import { ROLES, SNAPSHOT_H, SNAPSHOT_JPEG_QUALITY, SNAPSHOT_W } from "../../shared/contracts";
-import type { Choices, Player, Role, Round } from "../../shared/contracts";
+import { RATING_MAX_MS, ROLES, SETTLE_MS, SNAPSHOT_H, SNAPSHOT_JPEG_QUALITY, SNAPSHOT_W } from "../../shared/contracts";
+import type { Choices, Player, Results, Role, Round } from "../../shared/contracts";
 import { BUNDLED_SCENES } from "../../shared/sceneLoader";
 import { db, onValue, ref, serverNow, signIn } from "../lib/firebase";
 import { resolveTarget } from "../lib/renderer/params";
@@ -37,6 +37,9 @@ async function start() {
   let round: Round | null = null;
   let choices: Choices = {};
   let players: Record<string, Player> = {};
+  let results: Results = {};
+  let seenRender = false; // first render already in reveal (refresh): show final scores, no catch-up animation
+  const shown = new Map<string, number | null>(); // `${round}:${key}` -> value already counted up
   let mounted: (ReturnType<typeof mountRenderer> & { key: string }) | null = null;
   let snapshot: string | null = null; // base64 JPEG of the locked frame (D-21), in memory until P1-1
 
@@ -71,6 +74,22 @@ async function start() {
   $(".url").textContent = playUrl;
 
   const countEl = $(".count");
+  const rail = $(".rail");
+  // Rail drains once over the whole window: toward the 25 s cap until verdict.ready fixes the end at ratingEndsAt (D-15).
+  // Redrawn every frame; a re-targeted end eases in over ~240 ms instead of jumping.
+  let railEnd = 0;
+  let railLast = 0;
+  const railFrame = (ms: number) => {
+    requestAnimationFrame(railFrame);
+    const dt = ms - railLast;
+    railLast = ms;
+    if (round?.status !== "rating" || !round.ratingEndsAt || !round.lockedAt) return void (railEnd = 0);
+    const from = round.lockedAt + SETTLE_MS;
+    const end = results.verdict?.ready ? round.ratingEndsAt : from + RATING_MAX_MS;
+    railEnd = railEnd ? railEnd + (end - railEnd) * (1 - Math.exp(-dt / 80)) : end;
+    rail.style.transform = `scaleX(${Math.min(1, Math.max(0, (railEnd - serverNow()) / (railEnd - from)))})`;
+  };
+  requestAnimationFrame(railFrame);
   const tick = () => {
     if (round?.status !== "live" || round.startsAt == null) return;
     const left = Math.max(0, Math.min(round.durationMs, round.startsAt + round.durationMs - serverNow()));
@@ -82,7 +101,7 @@ async function start() {
 
   function render() {
     // Wait for every listener once, so a refreshed screen's first target is the real one (no catch-up animation).
-    if (loaded.size < 3 || !round) return;
+    if (loaded.size < 4 || !round) return;
     const scene = BUNDLED_SCENES.find((s) => s.id === round!.sceneId);
     if (!scene) return void ($("#msg").textContent = `unknown scene ${round.sceneId}`);
     $("#msg").textContent = "";
@@ -113,7 +132,46 @@ async function start() {
     $(".joined").textContent = `Creators ${DIALS.filter(nickOf).length}/${DIALS.length} joined · ${people.length} here`;
     $(".dials").replaceChildren(...DIALS.map((r) => dialRow(r, nickOf(r))));
     $(".credits").replaceChildren(...DIALS.filter(nickOf).map((r) => dialRow(r, nickOf(r), labelOf(r))));
+    $("#stage").classList.toggle("reveal", status === "reveal");
+    if (status === "reveal") renderScores(!seenRender);
+    else ui.classList.remove("instant");
+    seenRender = true;
     tick();
+  }
+
+  // P1-4 Beats 6-8: numerals count up 0 -> score over 600 ms (§5.3 rule 7); a refreshed screen shows final values at once.
+  function countUp(el: HTMLElement, key: string, val: number | null | undefined, delay: number, instant: boolean) {
+    const id = `${round!.id}:${key}`;
+    if (shown.get(id) === (val ?? null)) return;
+    shown.set(id, val ?? null);
+    const tok = (el as any)._tok = {};
+    if (val == null) return void (el.textContent = "--");
+    if (instant) return void (el.textContent = val.toFixed(1));
+    const t0 = performance.now() + delay;
+    const step = () => {
+      if ((el as any)._tok !== tok) return;
+      const p = Math.min(1, Math.max(0, (performance.now() - t0) / 600));
+      const v = val * (1 - (1 - p) ** 3);
+      el.textContent = p >= 1 || p > 1 - 100 / 600 ? v.toFixed(1) : String(Math.round(v));
+      if (p < 1) requestAnimationFrame(step);
+    };
+    step();
+  }
+
+  function renderScores(instant: boolean) {
+    if (instant) ui.classList.add("instant");
+    const num = (k: string) => $<HTMLElement>(`[data-k=${k}] .num`);
+    const cap = (k: string) => $<HTMLElement>(`[data-k=${k}] .cap`);
+    countUp(num("author"), "author", results.author?.score, 200, instant);
+    countUp(num("ai"), "ai", results.ai?.score, 600, instant);
+    countUp(num("audience"), "audience", results.audience?.score, 1000, instant);
+    countUp(num("combined"), "combined", results.combined, 1700, instant);
+    cap("author").textContent = results.author ? "" : "no picks";
+    cap("ai").textContent = results.ai ? [results.ai.comment, results.ai.fallback ? "(offline judge)" : ""].filter(Boolean).join(" ") : "judge offline"; // ponytail: results.ai is not written until P1-1
+    cap("audience").textContent = results.audience?.count ? `from ${results.audience.count} ratings` : "no ratings";
+    const vs = $(".verdict"); // ponytail: results.verdict.script is not written until P1-1; hidden until present
+    vs.textContent = results.verdict?.script ?? "";
+    vs.classList.toggle("has", !!results.verdict?.script);
   }
 
   const sub = <T>(path: string, set: (v: T) => void) =>
@@ -125,4 +183,5 @@ async function start() {
   sub<Round>("round", (v) => (round = v));
   sub<Choices>("choices", (v) => (choices = v ?? {}));
   sub<Record<string, Player>>("players", (v) => (players = v ?? {}));
+  sub<Results>("results", (v) => (results = v ?? {}));
 }

@@ -1,30 +1,30 @@
 # HANDOFF
 
 ## Done this session
-- [P1-3](BUILD_ORDER.md) Spectator rating UI + "You made this" card (solo §8, lane A + B host button; no contracts/rules/package changes).
-- `web/play/main.ts`: in `rating`, Spectators get five write-once buttons 1–5 (`set ratings/{uid}`, listens only to own `ratings/{uid}`, "Thanks" after). Creators get a card (role badge in role hue, chosen option label, "Scores on the big screen") through `rating` and `reveal` (D-14).
-- `web/host/main.ts`: "Add 10 spectator bots" (`addBots(10, true)`); `tickBots` makes bot Spectators vote 3–5 during `rating` (30% chance per tick, once per bot per round; host-written, allowed by rules).
-- Fix after user test: the host tick now runs from a Blob Web Worker, not `setInterval`. A hidden `/host` tab (same browser as `/screen`) was throttled, so T3/T4/T5, bot votes, and scores stalled until the host tab was focused.
+- [P1-4](BUILD_ORDER.md) (minus polish, solo §8): three-score reveal on `/screen`. Files: `web/screen/main.ts`, `web/screen/index.html` only.
+  - Beat 5 rating rail (bottom 4 px): drains once from settle end toward the 25 s cap; once `verdict.ready` is set it re-targets to `ratingEndsAt` (one 240 ms ease). Fixed after user test: it used to refill to 1/4 on each 3 s extension.
+  - Beats 6-7 at `reveal`: artwork scales to 0.6 left, board on right with Author / AI / Audience cards (stamp 400 ms apart, count-up 600 ms, one decimal at the end) then Combined slam at 1.6 s. Captions: "from N ratings" / "no ratings", AI comment + "(offline judge)", "judge offline".
+  - Beat 9 credits strip (per dial: nick · role · option label) fades in at reveal + 2.6 s.
+  - Refresh mid-reveal shows final values instantly (`instant` class), no catch-up animation.
+- Listens to `results` (4th listener; render waits for 4 paths). Adaptive window was already host-side; not touched.
 
 ## In progress / next
-- User to re-test: `/host` and `/screen` as tabs in one browser, stay on `/screen`; round should lock → rate → reveal on time, bot votes land, scores show on `/host`.
-- Next task: [P1-4](BUILD_ORDER.md) three-score reveal on `/screen` (today scores appear only on `/host`'s score line; `/screen` has no rating rail or score cards).
-- `TODO(P1-1)` in `web/screen/main.ts` (judgeRequestedAt + judgeRound).
+- Next task: [P1-1](BUILD_ORDER.md) `judgeRound`. `TODO(P1-1)` in `web/screen/main.ts` `capture()`. When `results.ai` / `results.verdict.script` get written, the screen shows them with no further change.
 
 ## Verify status
-- `/verify`: typecheck, lint, `npm test`, build pass. Rules untouched; emulator test not rerun (last: 36 assertions pass). Worker fix not yet browser-verified.
+- `/verify`: typecheck, lint, `npm test`, build pass. Rules untouched (emulator not rerun). Browser visual QA not run this session.
 
 ## Decisions / docs
-- No new D-nn. Creators' phone shows the card, not the artwork (by design: no images in RTDB); user may want the image or scores on the phone later. That would be new scope, so ask first.
+- No new D-nn. Missing AI shows "--" with caption "judge offline" (art direction says em dash; user asked for "--").
 
 ## Blockers / open items
-- Real-phone QR run over LAN not done (`npm run dev -- --host`).
-- `.cursor/skills/judge-script/SKILL.md` still says input "scene" (should be `scene.description`).
-- Rating window always runs to the 25 s cap until P1-1 sets `verdict.ready`.
+- Visual check of reveal layout (title card at top-left vs scaled artwork overlap) still needed on a real session at 1280×720 and 1920×1080.
+- Verdict audio, Play button, sounds, light bursts, credits stagger, Reimagined: P1-2 / P1-6 / P1-7.
+- `judge-script` skill still says input "scene" (should be `scene.description`).
 
 ## Gotchas
-- `/host` must stay open (a background tab is fine now; closing it or freezing the window stops the round).
-- Bot Spectators = bots with no slot; they vote only while `round.status == "rating"`. Role is re-derived from slots at START.
+- `/host` must stay open (Blob worker tick keeps it running in background).
+- Bot Spectators vote only while `round.status == "rating"`; rating window runs to the 25 s cap until `verdict.ready` exists.
 - Two identities in one browser: `localhost` vs `127.0.0.1`.
 - Rules tests (Java 21): `npx -y firebase-tools@latest emulators:exec --only database "npx tsx database.rules.test.mts"`.
-- Mid-live host refresh runs missed steps in one frame (hitch by design).
+- Count-up uses `performance.now` (chrome only; renderer stays deterministic).
