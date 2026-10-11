@@ -1,26 +1,24 @@
 # HANDOFF
 
 ## Done this session
-- **P1-4 audio UI / play half of P1-2** ([BUILD_ORDER](BUILD_ORDER.md) §4/§8): `/screen` plays `results.verdict.audioUrl` at reveal. `web/screen/main.ts` (`syncVoice()`, called from `render()`) and `web/screen/index.html` (`.play-verdict` button). No new listeners, no writes.
-- Earlier: P1-2 backend (ElevenLabs in `functions/src/judgeRound.ts`, not deployed, not committed).
+- **P1-8 code** ([BUILD_ORDER](BUILD_ORDER.md) §4/§8): 3 canned verdicts per demo scene in new `functions/src/cannedVerdicts.ts` (moved out of `judgeRound.ts`); one-shot generator `functions/scripts/genFallbackClips.ts` (ElevenLabs -> Storage `fallback/{sceneId}/{n}.mp3`, n=0..2, skips existing). `judgeRound.ts`: fallback URL now `fallback/{sceneId}/{n}.mp3`.
+- Rule (stable): `n = sha256(roundId)[0] % clips`, so the canned text and clip match; same n used when Gemini works but TTS fails (text and clip then differ).
+- Earlier: P1-4 audio UI, P1-2 backend (not deployed, not committed).
 
 ## In progress / next
-- Manual check below (needs deployed functions + a real `audioUrl`), then deploy functions and run the P1-2 cache-hit check.
-- Then P1-10 or A3 (fallback clips).
+- **Clips NOT generated/uploaded yet** (no key/credentials in this session). Run the generator (header of the script), then deploy functions and do the manual check.
 
 ## Verify status
-- typecheck pass · lint pass · `npm test` pass · build pass (chunk-size warning, already there).
-- Playback NOT tested in a browser.
+- typecheck pass · lint pass · `npm test` pass · build pass (chunk-size warning, already there). Script type-checked standalone. Playback and Storage not tested.
 
 ## Decisions / docs
-- No D-nn added. Conflict noted: `docs/01-art-direction.md` L202 says unlock at session start + host manual Play; this slice follows the task/ARCHITECTURE (screen plays; Play button appears only if autoplay is blocked). SFX ducking not done (no SFX bus).
+- No D-nn added. Lane note: touched B (`functions/`) only.
 
 ## Blockers / open items
-- Carried: hidden-/screen-at-lock gap, `meta.screenUid`, real-phone LAN, custom-domain auth.
-- No `fallback/{sceneId}/0.mp3` yet (A3), so fallback path gives `audioUrl: null` (text only).
+- Needs `ELEVENLABS_API_KEY`, a service-account JSON (gitignored), and bucket name; carried: hidden-/screen-at-lock gap, `meta.screenUid`, real-phone LAN, custom-domain auth.
 
 ## Gotchas
-- Plays once per round+url, only while status is `reveal`; the url arriving late (ready after reveal) still plays. A refreshed /screen at reveal replays it.
-- Autoplay is allowed once the page has had a gesture (e.g. a click on /screen); otherwise the "Play verdict" button shows.
-- Worst-case Gemini 12 s + TTS 10 s can pass the 25 s cap; verdict then lands late.
-- Fallback/cached URLs need a download token; upload via the console.
+- Script uses env vars only (`ELEVENLABS_API_KEY`, `STORAGE_BUCKET`, `GOOGLE_APPLICATION_CREDENTIALS`); run with `npx tsx` from repo root. Uploads set a download token (needed by `getDownloadURL`).
+- Editing a canned script means re-running with `--force` for that scene.
+- Unknown sceneId has only the `default` text and no clip (`audioUrl: null`).
+- Plays once per round+url, only at `reveal`; "Play verdict" button shows if autoplay is blocked.

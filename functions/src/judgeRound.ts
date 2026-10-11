@@ -9,6 +9,7 @@ import {GEMINI_TIMEOUT_MS, ROLES, TTS_TIMEOUT_MS, VERDICT_WORDS_MAX, VERDICT_WOR
 import type {AiResult, Choices, Flags, JudgeRoundRequest, JudgeRoundResponse, Results, Round, SessionMeta, Verdict} from "../../shared/contracts";
 import {BUNDLED_SCENES} from "../../shared/sceneLoader";
 import {aiScore} from "../../shared/scoring";
+import {CANNED} from "./cannedVerdicts";
 
 // CONTRACTS §7 judgeRound: flags, cap, snapshot to Storage, one Gemini call (§8), canned fallback, idempotency,
 // then verdict audio (ElevenLabs, cached by script hash, D-25); verdict.ready only once the audio decision is made.
@@ -118,8 +119,8 @@ async function urlIfExists(path: string): Promise<string | null> {
 }
 
 /** CONTRACTS §7 step 5: cached clip, else fresh ElevenLabs clip, else the scene's fallback clip, else null. Never throws. */
-async function verdictAudio(script: string, sceneId: string, flags: Flags | null, ttsCharsUsed: number, base: string): Promise<string | null> {
-  const fallback = () => urlIfExists(`fallback/${sceneId}/0.mp3`);
+async function verdictAudio(script: string, sceneId: string, n: number, flags: Flags | null, ttsCharsUsed: number, base: string): Promise<string | null> {
+  const fallback = () => urlIfExists(`fallback/${sceneId}/${n}.mp3`);
   try {
     if (!flags?.voiceEnabled || !flags.ttsVoiceId || !flags.ttsModelId) return await fallback();
     const path = `verdicts/${createHash("sha256").update(script).digest("hex")}.mp3`;
@@ -138,26 +139,6 @@ async function verdictAudio(script: string, sceneId: string, flags: Flags | null
     return await fallback();
   }
 }
-
-// One canned verdict per demo scene (judge-script skill). Generic: they cannot know the chosen options.
-const CANNED: Record<string, {comment: string; script: string}> = {
-  "rush-hour": {
-    comment: "Stuck in traffic, but the mood is moving.",
-    script: "Our judge is stuck in traffic, so here is the verdict from the shoulder. This highway has not moved in ninety seconds and it still feels like it is going somewhere. The light does honest work here. Honestly, it is the most progress anyone has made on this road all year. Moody, solid, and nobody honked.",
-  },
-  "diner": {
-    comment: "Warm light, dark lot, burnt coffee. It works.",
-    script: "The judge clocked out, so the night shift is covering. This diner glows like the only open door for fifty miles, and warm light against a dark lot always lands. The coffee is probably burnt, but the composition is not. Pull up a stool, because this one earned a refill and a decent tip.",
-  },
-  "vigilante": {
-    comment: "Brooding silhouette, clear read from the back row.",
-    script: "Our judge has gone dark, which honestly suits this piece. A lone caped figure over a skyline is a classic for a reason, and the silhouette reads clearly from the back row. Is it brooding or just waiting for a rideshare? Hard to say. Either way, the city looks like it needs saving, and it looks good.",
-  },
-  "default": {
-    comment: "The judge is offline, but the room is not.",
-    script: "Our judge stepped out, so the verdict is coming from the house. Three people, three dials, ninety seconds, and the piece still holds together, which is more than most group projects manage. The colors and the motion agree with each other. Nobody asked for a masterpiece, and this one quietly showed up anyway.",
-  },
-};
 
 export const judgeRound = onCall<JudgeRoundRequest, Promise<JudgeRoundResponse>>({timeoutSeconds: 30, secrets: [GEMINI_API_KEY, ELEVENLABS_API_KEY]}, async (req) => {
   const uid = req.auth?.uid;
@@ -190,7 +171,10 @@ export const judgeRound = onCall<JudgeRoundRequest, Promise<JudgeRoundResponse>>
     logger.warn("snapshot upload failed", e);
   }
 
-  const canned = CANNED[round.sceneId] ?? CANNED.default;
+  // One stable rule: clip n = first byte of sha256(roundId) mod 3, so the canned text and fallback/{sceneId}/{n}.mp3 match.
+  const cannedSet = CANNED[round.sceneId] ?? CANNED.default;
+  const clipN = createHash("sha256").update(roundId).digest()[0] % cannedSet.length;
+  const canned = cannedSet[clipN];
   const scene = BUNDLED_SCENES.find((s) => s.id === round.sceneId);
   let judged: Awaited<ReturnType<typeof askGemini>> = null;
   if (scene && flags?.aiEnabled && (meta.usage?.judgeCalls ?? 0) < (flags.maxJudgeCallsPerSession ?? 0)) {
@@ -216,7 +200,7 @@ export const judgeRound = onCall<JudgeRoundRequest, Promise<JudgeRoundResponse>>
   if (!committed) throw new HttpsError("already-exists", "already judged");
   await db.ref(`${base}/results`).update({verdict, snapshotUrl: snapshotUrl || null});
 
-  verdict.audioUrl = await verdictAudio(verdict.script, round.sceneId, flags, meta.usage?.ttsChars ?? 0, base);
+  verdict.audioUrl = await verdictAudio(verdict.script, round.sceneId, clipN, flags, meta.usage?.ttsChars ?? 0, base);
   verdict.ready = true;
   if ((await db.ref(`${base}/round/id`).get()).val() !== roundId) throw new HttpsError("failed-precondition", "round moved on");
   await db.ref(`${base}/results/verdict`).update({audioUrl: verdict.audioUrl, ready: true});
