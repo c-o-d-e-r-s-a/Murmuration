@@ -111,6 +111,14 @@ function mount(code: string) {
   const nextBtn = el("button", { textContent: "New round", onclick: () => newRound() });
   const resetBtn = el("button", { textContent: "Reset round", onclick: () => reset() });
   const posterBtn = el("button", { textContent: "Download poster", onclick: () => poster() });
+  // P2-4: static pre-made walkthrough (genNarration.ts); plain click-to-play, no TTS call.
+  const narrAudio = new Audio("https://firebasestorage.googleapis.com/v0/b/murmuration-33d60.firebasestorage.app/o/narration%2Fdemo-walkthrough.mp3?alt=media");
+  const narrBtn = el("button", { textContent: "Play narration", onclick: () => {
+    if (narrAudio.paused) narrAudio.play().catch(() => (errEl.textContent = "narration not available (not uploaded?)"));
+    else narrAudio.pause();
+  } });
+  narrAudio.onplay = () => (narrBtn.textContent = "Stop narration");
+  narrAudio.onpause = narrAudio.onended = () => (narrBtn.textContent = "Play narration");
   const reimBtn = el("button", { textContent: "Download Gemini image", onclick: () => {
     if (results.reimagined?.url && round) downloadUrl(results.reimagined.url, `murmuration-${code}-${round.id}-gemini.png`);
   } });
@@ -122,7 +130,7 @@ function mount(code: string) {
     el("p", {}, "Scene ", sceneSel, " Duration ", durSel),
     statusEl,
     el("p", {}, "Prompt: ", promptEl, " ", rerollBtn),
-    el("p", {}, startBtn, " ", nextBtn, " ", resetBtn, " ", posterBtn, " ", reimBtn),
+    el("p", {}, startBtn, " ", nextBtn, " ", resetBtn, " ", posterBtn, " ", reimBtn, " ", narrBtn),
     scoresEl,
     errEl,
     el("p", {}, el("button", { textContent: "Add 3 bots", onclick: () => addBots(3) }), " ", el("button", { textContent: "Add 10 spectator bots", onclick: () => addBots(10, true) }), " ", newBtn),

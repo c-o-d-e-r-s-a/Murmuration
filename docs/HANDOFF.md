@@ -1,25 +1,25 @@
 # HANDOFF
 
 ## Done this session
-- **P2 pick-order 3, poster** ([BUILD_ORDER](BUILD_ORDER.md) §8 P2, D-37, lane B): new `web/host/poster.ts` (2D canvas → PNG blob: title, prompt, Author/AI/Audience/Combined, `nick · role · option label` credits, `results.snapshotUrl` as artwork if it loads, seeded flock dots); `web/host/main.ts` adds a "Download poster" button, visible only in `reveal`. Nothing uploaded; no `/screen`, functions, rules, or play changes.
-- Earlier (carried, not committed): P2 replay OG (`functions/src/replayOg.ts`), `/replay`, P1-10, P1-7 parts 1–2, P1-6, P1-8 code, P1-4, P1-2, P1-9.
+- **P2 pick-order 4, narration** ([BUILD_ORDER](BUILD_ORDER.md) §8 P2, lane B): new `functions/scripts/genNarration.ts` (one-shot ElevenLabs → Storage `narration/demo-walkthrough.mp3`, same pattern as `genFallbackClips.ts`); `web/host/main.ts` adds a "Play narration / Stop narration" button (click only, plain `Audio`, public `?alt=media` URL, no token). No play/screen/rules/functions-runtime/flags changes.
+- Earlier (carried, not committed): P2 poster (D-37), replay OG, `/replay`, P1-10, P1-7 parts 1–2, P1-6, P1-8 code, P1-4, P1-2, P1-9.
 
 ## In progress / next
-- **Manual check** of the poster (below), then the next P2 pick-order item (P2-4 narration audio).
-- Still open: deployed OG check (`firebase deploy --only functions:replayOg,hosting`), `/replay` browser check; P1-10, P1-7, P1-6 manual checks; P1-8 clips.
+- **Run the generator once** (needs ElevenLabs key), then manual check below.
+- Next P2 pick-order item per BUILD_ORDER §8.
+- Still open: deployed OG check (`firebase deploy --only functions:replayOg,hosting`), `/replay` browser check; P1-10, P1-7, P1-6 manual checks; P1-8 clips; poster manual check.
 
 ## Verify status
-- typecheck pass · lint pass · `npm test` pass · build pass. Poster not yet exercised in a browser.
+- typecheck pass · lint pass · `npm test` pass · build pass. Narration not yet exercised in a browser (mp3 not generated).
 
 ## Decisions / docs
-- None new. Poster follows D-37.
+- None new. No flag added (button is ungated; no external call at play time).
 
 ## Blockers / open items
-- Gemini image calls need AI Studio Prepay billing (402 → Reimagined fails, judge goes canned).
-- Carried: ElevenLabs key, hidden-/screen-at-lock gap, `meta.screenUid`, real-phone LAN, custom-domain auth.
+- ElevenLabs key (generator). Gemini image calls need AI Studio billing (402 → canned judge).
+- Carried: hidden-/screen-at-lock gap, `meta.screenUid`, real-phone LAN, custom-domain auth.
 
 ## Gotchas
-- Poster loads `snapshotUrl` with `crossOrigin=anonymous`; if the Storage bucket has no CORS config the image fails/taints and the poster silently falls back to the plain background. Fix = bucket CORS for the host origin.
-- Poster only covers the current `reveal` round; archived rounds are not re-downloadable (button hides after New round).
-- Hosting serves static files before rewrites; `/replay/?s=&r=` can never carry OG.
-- `npm test` doesn't run `functions/src/*.test.ts`; run them by hand with `tsx`.
+- Narration URL is hardcoded to bucket `murmuration-33d60.firebasestorage.app`; if the bucket changes, update `web/host/main.ts`. If the file isn't uploaded, the button shows "narration not available".
+- Audio plays on the host device only (not /screen), so route host audio to the room speakers.
+- Poster needs bucket CORS for the snapshot image; `npm test` doesn't run `functions/src/*.test.ts`.
