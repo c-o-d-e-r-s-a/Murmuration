@@ -56,24 +56,38 @@ export function parseVerdict(text: string | undefined, labels: string[]): Judged
   return {score: score.score, comment: comment.slice(0, 140), script};
 }
 
+/** Hard ceiling around one model call; SDK abort alone has been ignored in Cloud Functions (~20s hangs). */
+function withDeadline<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    p.then((v) => { clearTimeout(t); resolve(v); }, (e) => { clearTimeout(t); reject(e); });
+  });
+}
+
 /** Tries each model in order inside one GEMINI_TIMEOUT_MS budget; null means use the canned verdict. */
 export async function askGemini(models: string[], facts: object, labels: string[], jpegBase64: string): Promise<(Judged & {model: string}) | null> {
   const apiKey = GEMINI_API_KEY.value();
   if (!apiKey) return null;
   const client = new GoogleGenAI({apiKey});
   const deadline = Date.now() + GEMINI_TIMEOUT_MS;
+  // Split the budget so a stuck primary cannot starve the fallback (production symptom: 3.8 hung, lite never ran).
+  const slice = Math.max(4000, Math.floor(GEMINI_TIMEOUT_MS / Math.max(1, models.length)));
   for (const model of models) {
-    const ms = deadline - Date.now();
+    const ms = Math.min(slice, deadline - Date.now());
     if (ms < 1000) break;
     try {
-      const res = await client.interactions.create({
+      const res = await withDeadline(
+        client.interactions.create({
+          model,
+          input: [
+            {type: "text", text: PROMPT + JSON.stringify(facts)},
+            {type: "image", mime_type: "image/jpeg", data: jpegBase64},
+          ],
+          response_format: {type: "text", mime_type: "application/json", schema: SCHEMA},
+        }, {timeout: ms}),
+        ms + 500,
         model,
-        input: [
-          {type: "text", text: PROMPT + JSON.stringify(facts)},
-          {type: "image", mime_type: "image/jpeg", data: jpegBase64},
-        ],
-        response_format: {type: "text", mime_type: "application/json", schema: SCHEMA},
-      }, {fetchOptions: {signal: AbortSignal.timeout(ms)}});
+      );
       const judged = parseVerdict(res.output_text, labels);
       if (judged) return {...judged, model};
       logger.warn("gemini reply out of spec", {model, text: res.output_text?.slice(0, 600)});
@@ -186,7 +200,9 @@ export const judgeRound = onCall<JudgeRoundRequest, Promise<JudgeRoundResponse>>
       if (label) picked[r] = label;
     }
     const facts = {scene: scene.description, prompt: round.promptText, choices: picked, unfilledRoles: ROLES.filter((r) => !picked[r])};
-    const models = [...new Set([flags.geminiModel, flags.geminiFallbackModel].filter(Boolean))];
+    // Prefer *-flash-lite first: gemini-3.8-flash has been hanging in Cloud Functions past AbortSignal and starving the fallback.
+    const listed = [flags.geminiModel, flags.geminiFallbackModel].filter((m): m is string => !!m);
+    const models = [...new Set([...listed.filter((m) => /flash-lite/i.test(m)), ...listed])];
     judged = await askGemini(models, facts, Object.values(picked), snapshotJpegBase64);
   }
   const ai: AiResult = judged ?

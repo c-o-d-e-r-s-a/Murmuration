@@ -44,7 +44,7 @@ export const FLICKER_MAX_AREA = 0.25; // fraction of canvas any flicker may affe
 
 export const ENERGY_WRITE_THROTTLE_MS = 150; // P2 energy dial only (D-08)
 
-export const GEMINI_TIMEOUT_MS = 12000;
+export const GEMINI_TIMEOUT_MS = 16000; // shared budget across primary + fallback; leave headroom for TTS inside the 30s function
 export const TTS_TIMEOUT_MS = 10000;
 export const REIMAGINE_TIMEOUT_MS = 60000;
 export const TIGER_TIMEOUT_MS = 5000;

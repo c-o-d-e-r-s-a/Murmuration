@@ -29,7 +29,7 @@ assert.equal(parseVerdict(reply({comment: "x".repeat(200)}), labels)?.comment.le
     const picked = {palette: scene.options.palette[0].label, form: scene.options.form[0].label, motion: scene.options.motion[0].label};
     const facts = {scene: scene.description, prompt: scene.prompts[0].text, choices: picked, unfilledRoles: ["texture", "mood"]};
     const t0 = Date.now();
-    const live = await askGemini(["gemini-3.8-flash", "gemini-3.5-flash-lite"], facts, Object.values(picked), jpeg);
+    const live = await askGemini(["gemini-3.5-flash-lite", "gemini-3.8-flash"], facts, Object.values(picked), jpeg);
     console.log("live:", Date.now() - t0, "ms", live);
     assert.ok(live, "live Gemini call returned nothing valid");
     assert.equal(await askGemini(["no-such-model"], facts, Object.values(picked), jpeg), null);
