@@ -7,3 +7,4 @@ initializeApp();
 
 export {judgeRound} from "./judgeRound";
 export {logRoundEvents} from "./logRoundEvents";
+export {reimagineRound} from "./reimagineRound";

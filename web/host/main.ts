@@ -4,7 +4,9 @@ import {
   DEFAULT_DURATION_MS, DURATIONS_MS, HOST_TICK_MS, MIN_CREATORS, NICK_MAX, NICK_MIN, RATING_EXTEND_STEP_MS, RATING_MIN_MS,
   SESSION_CODE_ALPHABET, SESSION_CODE_LEN,
 } from "../../shared/contracts";
-import type { Choices, LogRoundEventsRequest, LogRoundEventsResponse, Player, Rating, Results, Role, Round, Scene, SessionMeta } from "../../shared/contracts";
+import type {
+  Choices, LogRoundEventsRequest, LogRoundEventsResponse, Player, Rating, ReimagineRoundRequest, ReimagineRoundResponse, Results, Role, Round, Scene, SessionMeta,
+} from "../../shared/contracts";
 import { BUNDLED_SCENES } from "../../shared/sceneLoader";
 import { audienceScore, authorScore, combined } from "../../shared/scoring";
 import { db, functions, httpsCallable, onValue, ref, serverNow, serverTimestamp, set, signIn, update } from "../lib/firebase";
@@ -222,8 +224,19 @@ function mount(code: string) {
       write({
         "round/status": "reveal", "round/statusVersion": v(),
         "results/audience": audience, "results/combined": combined(results.author?.score, results.ai?.score, audience.score),
-      }).then(() => { if (round?.id === id && round.status === "reveal") logTiger(id); });
+      }).then(() => {
+        if (round?.id !== id || round.status !== "reveal") return;
+        logTiger(id);
+        reimagine(id);
+      });
     }
+  }
+
+  /** Reimagined (D-36): fire-and-forget once at T5; the function owns results.reimagined, so failures here are only logged. */
+  function reimagine(roundId: string) {
+    get(ref(db, "config/flags/reimagineEnabled"))
+      .then((s) => s.val() === true && httpsCallable<ReimagineRoundRequest, ReimagineRoundResponse>(functions, "reimagineRound", { timeout: 90_000 })({ sessionCode: code, roundId }))
+      .catch((e) => console.warn("reimagineRound", e));
   }
 
   /** Tiger mirror (D-33): fire-and-forget; failures only in memory (lost on host refresh) and retried once at NEW_ROUND. */
