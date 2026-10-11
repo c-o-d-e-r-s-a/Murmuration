@@ -66,10 +66,10 @@ Rules:
 Two families, both Google Fonts, both variable, both **self-hosted** (download the latin woff2 files into `web/public/fonts/`; venue WiFi may throttle or block `fonts.googleapis.com`). Preload both; `font-display: swap`; latin subset only.
 
 - **Display: Bricolage Grotesque** (axes: `opsz 12–96`, `wdth 75–100`, `wght 200–800`). Used for countdown, prompt, title card, scores, wordmark, phone role title, option labels. Default `wght 700`, `wdth 100`, let `opsz` auto. Tight tracking at display sizes: `letter-spacing: -0.02em` above 96 px, `-0.01em` 40–96 px, `0` below.
-- **Text: Instrument Sans** (`wght 400–700`). Everything else: body, captions, nick list, verdict transcript, host UI. `wght 500` default, `600` for emphasis. Line height 1.3 on screen, 1.4 on phone.
+- **Text: Instrument Sans** (`wght 400–700`). Everything else: body, captions, nick list, host UI (verdict script on `/host` only, D-43). `wght 500` default, `600` for emphasis. Line height 1.3 on screen, 1.4 on phone.
 - Numerals: `font-variant-numeric: tabular-nums` on countdown, scores, counts, so digits do not jitter while counting.
 - Fallback stacks: display `"Bricolage Grotesque", "Arial Black", system-ui, sans-serif`; text `"Instrument Sans", system-ui, sans-serif`. A screenshot showing the fallback is a QA fail (§11, item 3).
-- Case: sentence case everywhere. Small caps (`text-transform: uppercase; letter-spacing: 0.12em; wght 600`) only for tiny labels: role names on badges, "Author · AI · Audience" captions, the "Reimagined" tag.
+- Case: sentence case everywhere. Small caps (`text-transform: uppercase; letter-spacing: 0.12em; wght 600`) only for tiny labels: role names on badges, "Author · AI · Audience" captions, the "Reimagined with Gemini" tag (D-43).
 
 ### 3.1 Type scale: big screen (`/screen`, `/replay`)
 
@@ -83,10 +83,10 @@ Reference 1920×1080. Sizes in px at 1080p and the `clamp()` that keeps them pro
 | `--fs-screen-score` | 112 | `clamp(64px, 5.8vw, 156px)` | Display 700, tabular | Three score numerals |
 | `--fs-screen-prompt` | 72 | `clamp(44px, 3.75vw, 100px)` | Display 600 | Prompt during live |
 | `--fs-screen-h2` | 48 | `clamp(30px, 2.5vw, 68px)` | Display 600 | Scene title, "The room is judging" |
-| `--fs-screen-body` | 36 | `clamp(24px, 1.875vw, 50px)` | Text 500 | Verdict transcript, AI comment, nick list |
+| `--fs-screen-body` | 36 | `clamp(24px, 1.875vw, 50px)` | Text 500 | AI comment, nick list, host verdict script |
 | `--fs-screen-label` | 28 | `clamp(24px, 1.46vw, 40px)` | Text 600 small caps | Badges, captions, "from 23 ratings" |
 
-Line lengths: prompt ≤ 2 lines at 72 px (scene prompts must be ≤ ~60 characters; add-scene skill should enforce). Verdict transcript ≤ 3 lines at 36 px (60 words fits in a 60% width column).
+Line lengths: prompt ≤ 2 lines at 72 px (scene prompts must be ≤ ~60 characters; add-scene skill should enforce). Host verdict script ≤ 3 lines at 36 px when shown (D-43: not on `/screen`).
 
 ### 3.2 Type scale: phone (`/play`) and host (`/host`)
 
@@ -200,7 +200,7 @@ Times are relative to `lockedAt` (T3) until the rating window, then relative to 
 
 ### Beat 8 — Verdict (`reveal` + 2200 ms)
 - `results.verdict.audioUrl` plays (requires the one-click audio unlock at session start; host has a manual Play per RISKS R14). Master SFX bus ducks −12 dB while the voice plays.
-- Transcript fades in under the scoreboard in `--fs-screen-body`, max 3 lines, `--text-secondary`. A tiny "AI judge" small-caps label with three dots breathing at 0.5 Hz while audio plays.
+- No transcript on `/screen` (D-43): voice only, plus the manual Play control when autoplay is blocked. The script stays in RTDB for `/host` diagnostics.
 - If `fallback: true`: same visuals; the canned clip plays. Never show a loading state here.
 
 ### Beat 9 — Credits (when verdict ends, or `reveal` + 25 s, whichever first)
@@ -208,7 +208,7 @@ Times are relative to `lockedAt` (T3) until the rating window, then relative to 
 - Phones: scores (three + combined) in a stacked list, "Next round soon" caption.
 
 ### Beat 10 — Reimagined (async, only if ready)
-- When `results.reimagined.url` arrives: the artwork slides left to occupy 50%, the reimagined image crossfades in on the right over `--dur-cinematic`, with a small-caps "Reimagined" tag. If it never arrives, nothing changes; no placeholder, no spinner. The host sees the status on `/host`.
+- When `results.reimagined.url` arrives: the artwork slides left to occupy 50%, the reimagined image crossfades in on the right over `--dur-cinematic`, with a small-caps "Reimagined with Gemini" tag (D-43). If it never arrives, nothing changes; no placeholder, no spinner. The host sees the status on `/host`.
 - **Sound:** none.
 
 ### New round (T6)
@@ -265,7 +265,7 @@ These are design guidance for `shared/presets.ts` and `shared/scenes/*.json`, no
 1. **Generic gradients.** No purple-to-blue, no rainbow, no "AI" gradient text. The only gradient is the text scrim (§2.2) and the two blooms.
 2. **Glassmorphism everywhere.** No `backdrop-filter`; it costs frames on a laptop GPU already drawing the artwork. Panels are flat `surface-1/2` at ≤ 72% opacity with a hairline.
 3. **Default fonts.** No `system-ui`, Arial, Helvetica, Roboto, or Inter as display. A screenshot showing the fallback stack is a bug.
-4. **Cluttered chips.** No rows of tags, filters, or "AI-powered" badges. Role badges (≤ 5, bottom strip) and the single "Reimagined" tag are the only chips in the product.
+4. **Cluttered chips.** No rows of tags, filters, or "AI-powered" badges. Role badges (≤ 5, bottom strip) and the single "Reimagined with Gemini" tag (D-43) are the only chips in the product.
 5. **Pure white on pure black** (`#FFF` text on `#000`): glare and halation on glossy and OLED laptop panels. Use the tokens.
 6. **Drop shadows, inner glows, 3D bevels, or neon text-shadow** in the chrome. Light comes from the artwork, not the UI.
 7. **Spinners, toasts, modals, or progress bars on the big screen.** Breathing dots for waiting; the host page holds the diagnostics.

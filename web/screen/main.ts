@@ -203,6 +203,7 @@ async function start() {
     $(".dials").replaceChildren(...DIALS.map((r) => dialRow(r, nickOf(r))));
     $(".credits").replaceChildren(...DIALS.filter(nickOf).map((r) => dialRow(r, nickOf(r), labelOf(r))));
     $("#stage").classList.toggle("reveal", status === "reveal");
+    syncReimagined(status === "reveal" && results.reimagined?.status === "ready" ? results.reimagined.url : undefined);
     if (status === "reveal") renderScores(!seenRender);
     else ui.classList.remove("instant");
     seenRender = true;
@@ -240,9 +241,24 @@ async function start() {
     cap("author").textContent = results.author ? "" : "no picks";
     cap("ai").textContent = results.ai ? [results.ai.comment, results.ai.fallback ? "(offline judge)" : ""].filter(Boolean).join(" ") : "judge offline";
     cap("audience").textContent = results.audience?.count ? `from ${results.audience.count} ratings` : "no ratings";
-    const vs = $(".verdict"); // hidden until results.verdict.script arrives
-    vs.textContent = results.verdict?.script ?? "";
-    vs.classList.toggle("has", !!results.verdict?.script);
+  }
+
+  // P1-7 part 2 (Beat 10): passive. Preload the image; only when it has loaded, shrink the artwork and crossfade it in.
+  // Anything else (absent, pending, failed, skipped, load error) leaves the reveal untouched.
+  const rxImg = $<HTMLImageElement>(".reimagined img");
+  function syncReimagined(url?: string) {
+    if ((rxImg.dataset.u || undefined) === url) return;
+    rxImg.dataset.u = url ?? "";
+    ui.classList.remove("rx");
+    $("#stage").classList.remove("rx");
+    if (!url) return void rxImg.removeAttribute("src");
+    rxImg.onload = () => {
+      if (rxImg.dataset.u !== url) return;
+      ui.classList.add("rx");
+      $("#stage").classList.add("rx");
+    };
+    rxImg.onerror = () => void (rxImg.dataset.u = "");
+    rxImg.src = url;
   }
 
   // Verdict audio at reveal (D-15, RISKS §2). One try per round+url; if autoplay is blocked, the Play button is the gesture.
