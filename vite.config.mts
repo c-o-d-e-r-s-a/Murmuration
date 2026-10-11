@@ -9,7 +9,10 @@ export default defineConfig({
     outDir: "../dist",
     emptyOutDir: true,
     rollupOptions: {
-      input: Object.fromEntries(pages.map((p) => [p, resolve("web", p, "index.html")])),
+      input: {
+        main: resolve("web", "index.html"),
+        ...Object.fromEntries(pages.map((p) => [p, resolve("web", p, "index.html")])),
+      },
     },
   },
 });
