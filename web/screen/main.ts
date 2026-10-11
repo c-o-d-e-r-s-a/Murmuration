@@ -62,6 +62,62 @@ async function start() {
     }
   }
 
+  // P1-6: lock thunk now, bloom (flash + seeded dots + swell) once SETTLE_MS has elapsed, i.e. after the frame was captured.
+  // Skipped on a late refresh. Audio is best-effort: a suspended AudioContext (no gesture yet) just stays silent.
+  const actx = new AudioContext();
+  addEventListener("pointerdown", () => void actx.resume(), { once: true });
+  addEventListener("keydown", () => void actx.resume(), { once: true });
+  function tone(f0: number, f1: number, dur: number, gain: number, attack: number) {
+    if (actx.state !== "running") return;
+    const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(gain, t + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(actx.destination);
+    o.start(t);
+    o.stop(t + dur);
+  }
+  let revealed = "";
+  async function reveal(r: Round) {
+    const lockedAt = r.lockedAt ?? 0;
+    if (revealed === r.id || serverNow() - lockedAt > SETTLE_MS + 1000) return;
+    revealed = r.id;
+    if (serverNow() - lockedAt < 500) tone(90, 45, 0.5, 0.35, 0.01); // lock
+    await new Promise((res) => setTimeout(res, lockedAt + SETTLE_MS - serverNow()));
+    if (round?.id !== r.id || (round.status !== "locked" && round.status !== "rating")) return;
+    tone(220, 440, 1.2, 0.15, 0.9); // bloom: rising swell
+    const bloomEl = $("#bloom");
+    bloomEl.classList.remove("go");
+    void bloomEl.offsetWidth;
+    bloomEl.classList.add("go");
+    // 60 dots from round.seed (mulberry32), burst outward over 900 ms with the bloom front.
+    let s = r.seed >>> 0;
+    const rnd = () => ((s = (s + 0x6d2b79f5) >>> 0), (((s ^ (s >>> 15)) * (1 | s)) >>> 0) / 4294967296);
+    const cv = $<HTMLCanvasElement>("#burst");
+    cv.width = innerWidth;
+    cv.height = innerHeight;
+    const g = cv.getContext("2d")!;
+    const dots = Array.from({ length: 60 }, () => ({ a: rnd() * Math.PI * 2, v: 0.35 + rnd() * 0.65, r: 2 + rnd() * 2.5 }));
+    const reach = Math.hypot(cv.width, cv.height) * 0.7;
+    const t0 = performance.now();
+    const step = (now: number) => {
+      const p = Math.min(1, (now - t0) / 900);
+      g.clearRect(0, 0, cv.width, cv.height);
+      if (p >= 1) return;
+      g.fillStyle = `rgba(244,239,230,${0.35 * (1 - p)})`;
+      const d = reach * (1 - (1 - p) ** 3);
+      for (const k of dots) {
+        g.beginPath();
+        g.arc(cv.width / 2 + Math.cos(k.a) * d * k.v, cv.height / 2 + Math.sin(k.a) * d * k.v, k.r, 0, Math.PI * 2);
+        g.fill();
+      }
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
   // Grab the first full frame of the locked mount, scaled to SNAPSHOT_W x SNAPSHOT_H.
   function capture(m: typeof mounted) {
     if (m !== mounted) return;
@@ -71,6 +127,7 @@ async function start() {
     const url = c.toDataURL("image/jpeg", SNAPSHOT_JPEG_QUALITY);
     snapshot = url.slice(url.indexOf(",") + 1);
     judge(round!.id, round!.lockedAt ?? 0, snapshot);
+    reveal(round!);
     if (!debug) return;
     console.log("snapshot", { width: c.width, height: c.height, kb: +((snapshot.length * 3) / 4 / 1024).toFixed(1), base64Length: snapshot.length });
     const a = Object.assign(document.querySelector<HTMLAnchorElement>("#snap") ?? document.body.appendChild(document.createElement("a")), {

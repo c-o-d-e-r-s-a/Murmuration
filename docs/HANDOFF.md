@@ -1,24 +1,31 @@
 # HANDOFF
 
 ## Done this session
-- **P1-8 code** ([BUILD_ORDER](BUILD_ORDER.md) §4/§8): 3 canned verdicts per demo scene in new `functions/src/cannedVerdicts.ts` (moved out of `judgeRound.ts`); one-shot generator `functions/scripts/genFallbackClips.ts` (ElevenLabs -> Storage `fallback/{sceneId}/{n}.mp3`, n=0..2, skips existing). `judgeRound.ts`: fallback URL now `fallback/{sceneId}/{n}.mp3`.
-- Rule (stable): `n = sha256(roundId)[0] % clips`, so the canned text and clip match; same n used when Gemini works but TTS fails (text and clip then differ).
-- Earlier: P1-4 audio UI, P1-2 backend (not deployed, not committed).
+- **P1-6 code** ([BUILD_ORDER](BUILD_ORDER.md) §4): `web/screen/main.ts` `reveal()` + `web/screen/index.html` (`#bloom`, `#burst`, card slide). On lock: Web Audio thunk (90→45 Hz, 0.5 s). At `lockedAt + SETTLE_MS`, after the capture frame: one radial bloom (900 ms, peak 0.55), 60 dots seeded from `round.seed` (mulberry32), rising swell tone. Title card slides up 48 px from `locked` to `rating`.
+- Earlier, not committed: P1-8 code (canned verdicts, `genFallbackClips.ts`), P1-4, P1-2.
 
 ## In progress / next
-- **Clips NOT generated/uploaded yet** (no key/credentials in this session). Run the generator (header of the script), then deploy functions and do the manual check.
+- **P1-6 manual check not done** (needs a browser round): see steps below.
+- P1-8 clips still not generated/uploaded (needs ElevenLabs key; header of `functions/scripts/genFallbackClips.ts`).
 
 ## Verify status
-- typecheck pass · lint pass · `npm test` pass · build pass (chunk-size warning, already there). Script type-checked standalone. Playback and Storage not tested.
+- typecheck pass · lint pass · `npm test` pass · build pass (chunk-size warning, already there). Visuals and sound not yet looked at.
+
+## Manual check (P1-6)
+1. `/host`, start session, open `/screen/?s=CODE`; click once on the screen tab (unlocks audio).
+2. Join 1+ bots/phones, run a 60 s round.
+3. At 0:00: thunk, hush, then ~1.5 s later one soft flash + dot burst + swell; no repeat.
+4. Title card slides up and reads from ~2 m; then rating and reveal as before.
+5. Refresh /screen during `rating`: no bloom, no sound.
 
 ## Decisions / docs
-- No D-nn added. Lane note: touched B (`functions/`) only.
+- No D-nn added. Lane note: touched A (`web/screen/`) only. Cues are Web Audio blips, not the `.ogg` files in art-direction §7 (simplest for solo).
 
 ## Blockers / open items
-- Needs `ELEVENLABS_API_KEY`, a service-account JSON (gitignored), and bucket name; carried: hidden-/screen-at-lock gap, `meta.screenUid`, real-phone LAN, custom-domain auth.
+- Carried: ElevenLabs key, hidden-/screen-at-lock gap, `meta.screenUid`, real-phone LAN, custom-domain auth.
 
 ## Gotchas
-- Script uses env vars only (`ELEVENLABS_API_KEY`, `STORAGE_BUCKET`, `GOOGLE_APPLICATION_CREDENTIALS`); run with `npx tsx` from repo root. Uploads set a download token (needed by `getDownloadURL`).
-- Editing a canned script means re-running with `--force` for that scene.
-- Unknown sceneId has only the `default` text and no clip (`audioUrl: null`).
-- Plays once per round+url, only at `reveal`; "Play verdict" button shows if autoplay is blocked.
+- `/screen` has no gesture, so SFX stay silent until the first click/keypress on it (art-direction says the host's Start click unlocks; different page). Visuals are unaffected.
+- Bloom fires from `capture()` via `reveal()`; the judged JPEG is taken before it. Bloom is skipped if screen loads >1 s past settle.
+- Burst canvas is sized once at fire time; no resize handling.
+- Verdict audio plays only at `reveal`, so SFX never overlap it; no ducking added.
