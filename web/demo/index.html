@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0b0f" />
+    <meta name="description" content="Play a compressed round of Murmuration: three dials, one artwork, three judges. Offline, about a minute." />
+    <title>Murmuration — How it works</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preload" href="/fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/instrument-sans-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <style>
+      /* Demo (art direction §12.4): the real renderer in a "big screen" panel, the phone instrument beside it, a progress rail below.
+         Offline: no Firebase. The screen chrome here is a compact echo of /screen, not an import of it. */
+      html, body { height: 100%; }
+      body { cursor: url("/cursor.svg") 10 10, auto; display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
+      a, button, label { cursor: pointer; }
+      input { cursor: text; }
+
+      .top { display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 0 5vw; border-bottom: 1px solid var(--hairline); flex: none; }
+      .top .brand .word { display: flex; align-items: center; gap: 12px; }
+      .top .brand .word small { font: 600 14px/1 var(--text); letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); padding-left: 12px; border-left: 1px solid var(--hairline); }
+      .tools { display: flex; gap: 8px; }
+      .tool { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 40px; min-height: 40px; padding: 0 12px; border: 1px solid var(--hairline); border-radius: 12px; background: transparent; color: var(--text-secondary); font: 600 14px/1 var(--text); text-decoration: none; transition: border-color var(--dur-standard), color var(--dur-standard); }
+      .tool:hover { color: var(--text-primary); border-color: var(--text-secondary); }
+      .tool .icon { width: 20px; height: 20px; }
+      .tool[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+
+      /* Stage: screen left, phone right */
+      .stage { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 48px; align-items: center; padding: 24px 5vw; min-height: 0; }
+      .screenwrap { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+      .screen { position: relative; aspect-ratio: 16 / 9; width: 100%; max-height: calc(100vh - 300px); margin: 0 auto; border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; background: var(--ink-1); }
+      #stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+      #stage canvas { display: block; max-width: 100%; max-height: 100%; }
+      #ui { position: absolute; inset: 0; pointer-events: none; font-size: clamp(11px, 1.3cqw, 20px); container-type: inline-size; }
+      .screen { container-type: inline-size; }
+      #ui > * { position: absolute; transition: opacity 300ms ease-in; opacity: 0; }
+      #ui[data-s="lobby"] .lobby, #ui[data-s="live"] .live, #ui[data-s="live"] .credits,
+      #ui[data-s="rating"] .card, #ui[data-s="rating"] .judging, #ui[data-s="rating"] .scrim, #ui[data-s="rating"] .rail,
+      #ui[data-s="reveal"] .card, #ui[data-s="reveal"] .board, #ui[data-s="reveal"] .scrim, #ui[data-s="reveal"] .credits { opacity: 1; transition-duration: 480ms; }
+      #ui[data-s="locked"] .live, #ui[data-s="locked"] .credits { transition: opacity 300ms var(--ease-exit) 200ms; }
+      .panel { background: rgba(21, 21, 28, 0.72); border: 1px solid var(--hairline); border-radius: 0.6em; }
+      .small { font: 600 1em/1.3 var(--text); text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary); }
+      .lobby { left: 5%; right: 5%; top: 8%; bottom: 8%; display: grid; grid-template-columns: 1fr 1.2fr; gap: 4%; }
+      .lobby .qrish { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.8em; }
+      .lobby .qrish .box { width: 55%; aspect-ratio: 1; background: var(--text-primary); border-radius: 0.4em; display: grid; place-items: center; color: var(--ink-0); font: 700 1.6em/1 var(--display); letter-spacing: 0.1em; }
+      .lobby .info { position: relative; display: flex; flex-direction: column; justify-content: center; gap: 0.8em; padding: 0 1.2em; overflow: hidden; }
+      .lobby .info > * { position: relative; }
+      .lobby .flock { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+      .lobby .wordmark { font: 800 3.4em/1 var(--display); font-stretch: 90%; letter-spacing: -0.03em; color: var(--text-primary); }
+      .dials { display: flex; flex-direction: column; gap: 0.5em; }
+      .dial { display: flex; align-items: center; gap: 0.6em; font: 600 1.1em/1.3 var(--text); color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .dial .dot { width: 0.7em; height: 0.7em; }
+      .dial .open { color: var(--text-secondary); }
+      .bar { left: 5%; right: 5%; top: 7%; display: flex; justify-content: space-between; align-items: center; gap: 1em; min-height: 3.5em; padding: 0.4em 1em; }
+      .bar .prompt { max-width: 60%; font: 600 1.8em/1.15 var(--display); color: var(--text-primary); }
+      .bar .count { font: 700 3.6em/1 var(--display); font-variant-numeric: tabular-nums; color: var(--accent); transition: color 600ms; }
+      .bar .count.urgent { color: var(--urgent); }
+      .credits { left: 5%; right: 5%; bottom: 7%; display: flex; align-items: center; gap: 1.2em; min-height: 3em; padding: 0.5em 1em; }
+      .credits:empty { display: none; }
+      .scrim { left: 0; right: 0; bottom: 0; height: 45%; background: linear-gradient(to top, rgba(11, 11, 15, 0.85), transparent); }
+      #ui .card { left: 5%; right: 5%; bottom: 12%; transition: all 480ms var(--ease-standard), opacity 480ms; }
+      #ui .card .title { font: 700 3em/1.05 var(--display); color: var(--text-primary); max-width: 80%; border-top: 1px solid var(--hairline); padding-top: 0.3em; margin-top: 0.2em; }
+      #ui[data-s="reveal"] .card { bottom: auto; top: 7%; right: 48%; }
+      #ui[data-s="reveal"] .card .title { font-size: 1.8em; max-width: 100%; }
+      .judging { right: 5%; top: 7%; display: flex; align-items: center; gap: 0.8em; padding: 0.5em 1em; font: 600 1.6em/1 var(--display); color: var(--text-primary); }
+      .judging i { width: 0.4em; height: 0.4em; border-radius: 50%; background: var(--text-primary); animation: breathe 2s ease-in-out infinite; }
+      .judging i:nth-child(2) { animation-delay: 0.25s; }
+      .judging i:nth-child(3) { animation-delay: 0.5s; }
+      #ui .rail { left: 0; right: 0; bottom: 0; height: 3px; background: var(--accent); transform-origin: left; transform: scaleX(var(--f, 1)); transition: opacity 300ms, transform 250ms linear; }
+      #stage { transition: transform 480ms var(--ease-standard); transform-origin: 3% 55%; }
+      #stage.reveal { transform: scale(0.6); }
+      .board { right: 5%; top: 7%; width: 40%; bottom: 14%; padding: 1em 1.2em; display: flex; flex-direction: column; gap: 0.6em; }
+      .board .sc { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0 0.6em; opacity: 0; }
+      .board .sc .num, .combined .num { font: 700 3em/1 var(--display); font-variant-numeric: tabular-nums; color: var(--text-primary); }
+      .board .sc .cap { grid-column: 1 / 3; color: var(--text-secondary); font-size: 1.05em; line-height: 1.3; }
+      .combined { position: relative; isolation: isolate; text-align: center; opacity: 0; margin-top: auto; }
+      .combined .num { font-size: 5.6em; font-weight: 800; color: var(--accent); }
+      .combined::before { content: ""; position: absolute; inset: -30% -10%; z-index: -1; opacity: 0; pointer-events: none; background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 35%, var(--text-primary)), transparent); }
+      #ui[data-s="reveal"] .sc { animation: stampIn 320ms var(--ease-stamp) both; animation-delay: calc(var(--i) * 400ms); }
+      #ui[data-s="reveal"] .combined { animation: slam 260ms var(--ease-stamp) both; animation-delay: 1600ms; }
+      #ui[data-s="reveal"] .combined::before { animation: bloom2 600ms 1600ms both; }
+      @keyframes bloom2 { 50% { opacity: 0.3; } 100% { opacity: 0; } }
+      @keyframes stampIn { from { opacity: 0; transform: scale(1.15); } to { opacity: 1; transform: none; } }
+      @keyframes slam { from { opacity: 0; transform: scale(1.3); } to { opacity: 1; transform: none; } }
+      #ui[data-s="reveal"] .credits .dial { animation: slidein 480ms var(--ease-standard) both; animation-delay: calc(2600ms + var(--i) * 120ms); }
+      @keyframes slidein { from { opacity: 0; transform: translateX(-2em); } }
+      #bloom { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--accent) 35%, var(--text-primary)) 0%, transparent 70%); }
+      #bloom.go { animation: bloom 900ms both; }
+      @keyframes bloom { 0% { opacity: 0; transform: scale(0); } 35% { opacity: 0.55; } 100% { opacity: 0; transform: scale(2.8); } }
+      #ui[data-s="locked"] .card { transform: translateY(2em); }
+      #ui[data-s="rating"] .card { transform: none; transition-delay: 300ms; }
+      #ui[data-s="rating"] .scrim, #ui[data-s="rating"] .judging { transition-delay: 300ms; }
+
+      /* Caption: the narration text, always on screen */
+      .caption { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: baseline; min-height: 72px; }
+      .caption .n { font: 800 40px/1 var(--display); letter-spacing: -0.03em; color: var(--bone); opacity: 0.35; font-variant-numeric: tabular-nums; }
+      .caption h2 { font: 700 20px/1.2 var(--display); letter-spacing: -0.01em; }
+      .caption p { color: var(--text-secondary); margin-top: 4px; max-width: 70ch; }
+      .caption .audio { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+      /* Phone frame */
+      .phone { position: relative; width: 360px; height: min(740px, calc(100vh - 176px)); min-height: 560px; padding: 16px 20px 20px; border: 1px solid var(--hairline); border-radius: 36px; background: var(--ink-0); overflow: hidden; }
+      .phone::before { content: ""; position: absolute; left: 50%; top: 10px; width: 80px; height: 5px; border-radius: 3px; background: var(--hairline); transform: translateX(-50%); }
+      .phone .instrument { height: 100%; gap: 14px; padding-top: 8px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+      .phone .instrument h1 { font-size: 32px; }
+      .phone .flock { display: block; flex: none; width: calc(100% + 40px); height: 26%; margin: -32px -20px -48px; pointer-events: none; }
+      .pitch { font: 600 24px/1.15 var(--display); letter-spacing: -0.01em; color: var(--text-primary); text-wrap: balance; }
+      .code { display: inline-flex; align-items: center; gap: 10px; font: 700 15px/1 var(--display); letter-spacing: 0.24em; color: var(--text-secondary); }
+      .code b { color: var(--text-primary); }
+      .nudge { color: var(--accent); }
+
+      /* Progress rail: Back · eight segments · Next */
+      .steps { flex: none; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 24px; padding: 16px 5vw calc(16px + env(safe-area-inset-bottom)); border-top: 1px solid var(--hairline); background: var(--ink-0); }
+      .segs { display: flex; gap: 6px; }
+      .seg { flex: 1; height: 40px; position: relative; background: transparent; border: 0; padding: 0; cursor: pointer; }
+      .seg::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: var(--hairline); transition: background-color var(--dur-standard); }
+      .seg.done::before { background: var(--text-secondary); }
+      .seg.now::before { background: var(--accent); height: 4px; margin-top: -1px; }
+      .seg span { position: absolute; left: 0; top: 0; font: 600 11px/1 var(--text); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
+      .seg.now span { color: var(--text-primary); }
+      .steps .btn.primary { min-width: 160px; }
+
+      @media (max-width: 1023px) {
+        .stage { grid-template-columns: 1fr; gap: 24px; padding: 16px 20px 24px; align-items: start; }
+        .screen { max-height: none; }
+        .phone { width: 100%; height: auto; min-height: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
+        .phone::before { display: none; }
+        .phone .instrument { padding-top: 0; min-height: 60vh; }
+        .phone .flock { height: 160px; margin: 0 -20px -40px; }
+        .caption { min-height: 0; }
+        .steps { position: sticky; bottom: 0; gap: 12px; }
+        .seg span { display: none; }
+        .steps .btn.primary { min-width: 120px; }
+        .top .brand .word small { display: none; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #ui[data-s="reveal"] .sc, #ui[data-s="reveal"] .combined, #ui[data-s="reveal"] .credits .dial { animation-duration: 1ms; }
+        #bloom.go { animation-duration: 1ms; }
+        .judging i { animation: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="top">
+      <a class="brand" href="/" aria-label="Murmuration home"><span class="mark" id="mark"></span><span class="word">Murmuration<small>How it works</small></span></a>
+      <div class="tools">
+        <button class="tool" id="mute" aria-pressed="false" title="Mute narration"></button>
+        <button class="tool" id="replay" title="Replay this step's narration"></button>
+        <a class="tool" href="/" title="Leave the demo" id="exit"></a>
+      </div>
+    </header>
+    <main class="stage">
+      <div class="screenwrap">
+        <div class="screen" aria-label="Big screen preview">
+          <div id="stage"></div>
+          <div id="ui" data-s="lobby">
+            <div class="lobby">
+              <div class="qrish panel"><div class="box">DEMO</div><span class="small">Scan to join</span></div>
+              <div class="info panel"><canvas class="flock" aria-hidden="true"></canvas><div class="wordmark">Murmuration</div><div class="small scene-title"></div><div class="joined"></div><div class="dials"></div></div>
+            </div>
+            <div class="live bar panel"><div class="prompt"></div><div class="count">1:30</div></div>
+            <div class="credits panel"></div>
+            <div class="scrim"></div>
+            <div class="card"><div class="small scene-card"></div><div class="title"></div></div>
+            <div class="rail"></div>
+            <div class="judging panel">The room is judging <i></i><i></i><i></i></div>
+            <div class="board panel">
+              <div class="sc" style="--i: 0" data-k="author"><span class="small">Author's Taste</span><span class="num">—</span><span class="cap"></span></div>
+              <div class="sc" style="--i: 1" data-k="ai"><span class="small">AI Match · example</span><span class="num">—</span><span class="cap"></span></div>
+              <div class="sc" style="--i: 2" data-k="audience"><span class="small">Audience</span><span class="num">—</span><span class="cap"></span></div>
+              <div class="combined" data-k="combined"><div class="num">—</div><div class="small">Combined</div></div>
+            </div>
+          </div>
+          <div id="bloom"></div>
+        </div>
+        <div class="caption"><div class="n" id="cap-n">01</div><div><h2 id="cap-h"></h2><p id="cap-p"></p><p class="audio" id="cap-a"></p></div></div>
+      </div>
+      <aside class="phone" aria-label="Phone"><div id="phone" class="instrument"></div></aside>
+    </main>
+    <footer class="steps">
+      <button class="btn quiet" id="back"></button>
+      <div class="segs" id="segs"></div>
+      <button class="btn primary" id="next"></button>
+    </footer>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

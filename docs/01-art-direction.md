@@ -293,3 +293,44 @@ One point per item. An agent scores a set of screenshots (`/screen` lobby, live,
 8. **Scrims and overlays.** Any text drawn over the artwork sits on the bottom scrim or a `surface-1` panel; during `live` the only chrome is the top bar and bottom strip; during `rating` the bottom rail is present and draining.
 9. **Reveal composition.** In the reveal screenshot: three score cards top-to-bottom with labels, a larger combined numeral, the compressed prompt at top, the artwork at ~78% scale on the left; null scores show an em dash with a caption, never an empty card; a 3-Creator round shows exactly three credit badges with no gaps or placeholders.
 10. **Content safety (hard fail).** No element resembles a real brand logo or trademarked character; the mood watermark is ≤ 10% opacity; nicknames shown are ≤ 16 characters and filtered; nothing on screen flickers (compare two frames 333 ms apart: no full-screen luminance swing > 20%).
+
+---
+
+## 12. UI v2: landing, play, host, demo
+
+Applies to `/`, `/play`, `/host`, `/demo`. **`/screen` and `/replay` keep §1–§11 unchanged** and import none of the v2 files (`web/lib/chrome/ui.css`, `boids.ts`, `mark.ts`, `icons.ts`). Both generations share the same dark world, the same sodium, and the same two faces, so a laptop running `/host` beside a fullscreen `/screen` reads as one product.
+
+### 12.1 Thesis
+
+A murmuration has no leader and no centre. The v1 pages were centred columns of cards; v2 is **a flight line**: one hard left edge everything hangs from, small-caps metadata on that edge, display type pushed hard to the right, and the empty right side is where the flock lives. The same structure is the phone's spine (a vertical detent rail beside the option keys), the host's transport bar, and the demo's progress rail.
+
+### 12.2 What changed and why
+
+| Area | v1 (§1–§10) | v2 | Why |
+|---|---|---|---|
+| Layout | centred `max-width` columns, cards | asymmetric: left rail + right field; sections with ghost numerals `01–04`; cards only where something is genuinely a card (QR, "You made this") | a flock is a field, not a card; negative space is the composition |
+| Wordmark | type only, "no logo glyph" (§8) | type + **the Turn**: a seeded cluster of 24 dots in a leaning teardrop with a trailing tail (`mark.ts`, `public/mark.svg`, `public/favicon.svg`; 9-dot compact) | a mark that is literally a flock, generated from our own geometry, animatable: the landing flock starts gathered *as* the mark and takes flight |
+| Flock motif | 40–80 dots on a noise field (`flock.ts`) | a boid flock (`boids.ts`, ≤ 240 birds, each a 2-point oriented dash that collapses to a dot at rest), separation/alignment/cohesion, avoids the pointer, modes: roam / three groups / settle-to-targets | the product's idea (local rules, one shape) is shown, not decorated; `/screen` keeps `flock.ts` |
+| Role hues | badges, credits, Creator card only | also allowed to **tint the brand flock** when it splits into three groups (landing "three dials", demo lobby); still never on buttons or sentences | the three-flocks-one-shape story needs them |
+| Gradients | scrim + blooms only | + a vertical **ink fade** (`ink-0` → transparent) between the flock canvas and text, same family as the scrim; still no colour gradients anywhere | text over the flock must clear 7:1 |
+| Shadows / blur | none | **none** (unchanged); no `backdrop-filter` | GPU is busy with the artwork |
+| Type | fixed `wdth 100` | Bricolage's width axis is expressive: statements step `wdth 75 → 100` across lines ("Three people. Three dials. One artwork."); ghost numerals Display 800 at 10–14% `--bone` | tension in the scale without a second family |
+| Neutral | 3 text tones | + `--ink-1 #121218` (large recessed fields: phone frame, console groups) and `--bone #D9D2C5` (ghost numerals, large low-emphasis display) | a secondary neutral for scale contrast; both pass the §2 rules (bone on ink-0 = 13.5:1) |
+| Icons | lock + connected dot | 2 px stroke 24 px custom set in `icons.ts`: lock, check, arrow, back, speaker, speaker-off, replay, external, close; never emoji | the four surfaces need affordances |
+| Motion | 240/480 ms enters | **weight and lag**: enters translate 16–24 px over 480 ms `--ease-standard`; list items stagger 60 ms as a wave (≤ 8 items); the phone needle slides between detents in 240 ms; still nothing oscillates > 1 Hz, overshoot only in the reveal stamps | motion that travels through a group like a murmuration wave |
+| Phone | a form | an **instrument**: option keys (72 px) along a vertical detent rail with a sodium needle; countdown as numeral + 2 px rail draining left to right; rating keys as a bank of five; `vibrate` unchanged | one hand, one dial |
+| Host | three cards | a **console**: transport bar (code, cue strip lobby→reveal, countdown, Open big screen), groups Run / Room / Monitor; CSS transforms and opacity only, the QR is the only canvas | dense, legible, cheap |
+| Cursor | default | landing and demo: a 16 px ring cursor (`public/cursor.svg`); interactive elements keep `pointer` | one small craft detail; never on phone or host |
+
+Everything in §2 (contrast floors), §4 (56 px targets, 72 px keys, bottom-60 % primary action, 20 px phone padding), §5.3 rules 1–2 and 5–8, §9 and §10 items 1–3, 5–9, 11–14 is **not relaxed**. §10 item 4 (no chips) stands except the progress rail on `/demo`, which is a stepper, not tags.
+
+### 12.3 Added tokens
+
+```
+--ink-1: #121218;   --bone: #D9D2C5;
+--dur-enter: 480ms; --stagger: 60ms;  --shift: 24px;  (16px on phones)
+```
+
+### 12.4 `/demo` (offline, no Firebase)
+
+Eight steps, Back allowed, never a dead end, ≤ 90 s: Welcome · Palette · Form · Motion · Lock · Rate · Reveal · Done. The big-screen panel is the **real renderer** (`mountRenderer` + `resolveTarget`, bundled scene, fixed seed 7); the phone panel reuses the `/play` instrument styles. Narration is static MP3 per step (`/narration/demo/step-NN.mp3`, generated once by `functions/scripts/genDemoNarration.ts`), unlocked by the first Start tap, with mute and replay; on-screen copy carries the whole story if a file is missing. The reveal computes Author from the scene's ranks and Audience from your rating plus a canned room through `shared/scoring.ts`; the AI card is a labelled example.

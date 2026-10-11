@@ -8,7 +8,7 @@ const clone = () => structuredClone(rushHour) as any;
 
 // rush-hour loads, 4 options per role, 8-10 prompts, labels <= 18
 const s = loadScene(rushHour);
-assert.equal(BUNDLED_SCENES[0].id, "rush-hour");
+assert.equal(s.id, "rush-hour");
 for (const r of ROLES) {
   assert.equal(s.options[r].length, 4);
   for (const o of s.options[r]) assert.ok(o.label.length <= 18, o.label);
@@ -16,7 +16,8 @@ for (const r of ROLES) {
 assert.ok(s.prompts.length >= 8 && s.prompts.length <= 10);
 
 // all three bundled scenes load with 4 options per role, short labels, 8-10 prompts, ranks 10/7/4/1
-assert.deepEqual(BUNDLED_SCENES.map((b) => b.id), ["rush-hour", "diner", "vigilante"]);
+assert.deepEqual(BUNDLED_SCENES.map((b) => b.id), ["vigilante", "diner", "rush-hour"]);
+assert.equal(BUNDLED_SCENES[0].id, "vigilante");
 for (const b of BUNDLED_SCENES) {
   for (const r of ROLES) {
     assert.deepEqual(b.options[r].map((o) => o.authorScore).sort((x, y) => y - x), [10, 7, 4, 1]);

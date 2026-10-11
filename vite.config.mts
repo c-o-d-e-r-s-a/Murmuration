@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { defineConfig } from "vite";
 
-const pages = ["screen", "play", "host", "dev", "replay"];
+const pages = ["screen", "play", "host", "dev", "replay", "demo"];
 
 export default defineConfig({
   root: "web",

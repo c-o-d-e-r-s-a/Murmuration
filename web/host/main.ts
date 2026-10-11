@@ -1,3 +1,4 @@
+import "../lib/chrome/ui.css";
 import { get, push } from "firebase/database";
 import QRCode from "qrcode";
 import {
@@ -12,11 +13,14 @@ import { BUNDLED_SCENES } from "../../shared/sceneLoader";
 import { audienceScore, authorScore, combined } from "../../shared/scoring";
 import { db, functions, httpsCallable, onValue, ref, serverNow, serverTimestamp, set, signIn, update } from "../lib/firebase";
 import { botPlan, drawPrompt, due, ratingCap, rotate } from "./machine";
+import { icon } from "../lib/chrome/icons";
+import { markEl } from "../lib/chrome/mark";
 import { downloadBlob, downloadUrl } from "../lib/download";
 import { makePoster } from "./poster";
 
 // B2 lobby (session, QR, scene, duration, players, slots, bots) + B4 state machine T1–T8 (ROUND_STATE_MACHINE §2, D-10).
 // Solo scope (BUILD_ORDER §8): only three assignable roles; texture/mood stay neutral. Ratings/judge/reimagine/Tiger are P1.
+// UI v2 (art direction §12): a console. Only DOM structure and class names changed; every write, listener and timer is v1.
 const SLOT_ROLES: Role[] = ["palette", "form", "motion"];
 const CODE_KEY = "murmuration.hostCode";
 
@@ -94,7 +98,7 @@ function mount(code: string) {
   const list = el("div", { className: "players" });
   const count = el("div", { className: "caps" });
 
-  const pulseEl = el("section", { className: "card pulse" });
+  const pulseEl = el("div", { className: "pulse" });
 
   const newBtn = el("button", { textContent: "New session", onclick: () => {
     if (!confirm("Start a brand new session? Phones on the old code are orphaned.")) return;
@@ -103,15 +107,20 @@ function mount(code: string) {
   } });
 
   const roundEl = el("span", { className: "caps" });
-  const stateEl = el("h2", { className: "status" });
+  // Cue strip: the five round states in order; renderRound lights the current one via data-status (CSS only).
+  const stateEl = el("ol", { className: "cues" }, ...(["lobby", "live", "locked", "rating", "reveal"] as const).map((s) => {
+    const li = el("li", { textContent: s });
+    li.dataset.cue = s;
+    return li;
+  }));
   const timeEl = el("span", { className: "time" });
   const promptEl = el("div", { className: "prompt" });
   const scoresEl = el("div", { className: "scores" });
   const errEl = el("div", { className: "err" });
-  const startBtn = el("button", { className: "primary", textContent: "Start", onclick: () => startRound() });
+  const startBtn = el("button", { className: "primary", textContent: "Start round", onclick: () => startRound() });
   const rerollBtn = el("button", { textContent: "Reroll prompt", onclick: () => reroll() });
   const nextBtn = el("button", { className: "primary", textContent: "New round", onclick: () => newRound() });
-  const resetBtn = el("button", { textContent: "Reset round", onclick: () => reset() });
+  const resetBtn = el("button", { className: "danger", textContent: "Reset round", onclick: () => reset() });
   const posterBtn = el("button", { textContent: "Download poster", onclick: () => poster() });
   // P2-4: static pre-made walkthrough (genNarration.ts); plain click-to-play, no TTS call.
   const narrAudio = new Audio("https://firebasestorage.googleapis.com/v0/b/murmuration-33d60.firebasestorage.app/o/narration%2Fdemo-walkthrough.mp3?alt=media");
@@ -126,35 +135,37 @@ function mount(code: string) {
   } });
 
   const labelled = (text: string, ctl: Node) => el("label", { className: "f" }, el("span", { className: "caps", textContent: text }), ctl);
+  // Named target: a second click focuses the same tab instead of opening another renderer. /screen reads ?s=CODE (uppercase).
+  const screenBtn = el("button", { className: "primary screen-btn", onclick: () => window.open(screenUrl, `murmuration-screen-${code}`) }, "Open big screen", icon("external"));
+  screenBtn.title = "Opens /screen for this session in its own tab. Fullscreen it (F11) on the laptop display; keep this console in its own window.";
   app.replaceChildren(el("div", { className: "host" },
-    el("header", { className: "top" },
-      el("div", {}, el("span", { className: "caps", textContent: "Session" }), el("h1", { className: "code", textContent: code })),
-      el("div", {}, roundEl, el("div", { className: "line" }, stateEl, timeEl)),
-      el("span", { className: "wordmark", textContent: "Murmuration" }),
+    el("header", { className: "bar" },
+      el("a", { className: "brand", href: "/", title: "Murmuration" }, markEl(28)),
+      el("div", { className: "cell" }, el("span", { className: "caps", textContent: "Session" }), el("h1", { className: "code", textContent: code })),
+      el("div", { className: "cell cues-cell" }, roundEl, stateEl),
+      el("div", { className: "cell" }, el("span", { className: "caps", textContent: "Clock" }), timeEl),
+      screenBtn,
     ),
-    el("div", { className: "cols" },
-      el("div", { className: "col" },
-        el("section", { className: "card" },
-          el("div", { className: "caps", textContent: "Prompt" }),
-          el("div", { className: "row" }, promptEl, rerollBtn),
-          el("div", { className: "pair" }, labelled("Scene", sceneSel), labelled("Duration", durSel)),
-          el("div", { className: "actions" }, startBtn, nextBtn, resetBtn, posterBtn, reimBtn, narrBtn),
-          scoresEl,
-          errEl,
-        ),
+    el("main", { className: "deck" },
+      el("section", { className: "group run" },
+        el("h2", { className: "caps", textContent: "Run" }),
+        el("div", { className: "row" }, promptEl, rerollBtn),
+        el("div", { className: "pair" }, labelled("Scene", sceneSel), labelled("Duration", durSel)),
+        el("div", { className: "transport" }, startBtn, nextBtn, resetBtn, el("span", { className: "spacer" }), posterBtn, reimBtn, narrBtn),
+        errEl,
       ),
-      el("div", { className: "col" },
-        el("section", { className: "card" },
-          el("div", { className: "caps", textContent: "Big screen" }),
-          // Named target: a second click focuses the same tab instead of opening another renderer.
-          el("button", { className: "primary", textContent: "Open big screen", onclick: () => window.open(screenUrl, `murmuration-screen-${code}`) }),
-          el("p", { className: "hint", textContent: "Fullscreen that tab (F11) on the laptop display; keep this host page in its own window." })),
-        el("section", { className: "card session" }, canvas,
-          el("div", {}, el("span", { className: "caps", textContent: "Phones join at" }), el("a", { href: playUrl, textContent: playUrl }), newBtn)),
-        el("section", { className: "card" }, count, list,
-          el("div", { className: "row tools" },
-            el("button", { textContent: "Add 3 bots", onclick: () => addBots(3) }),
-            el("button", { textContent: "Add 10 spectator bots", onclick: () => addBots(10, true) }))),
+      el("section", { className: "group room" },
+        el("h2", { className: "caps", textContent: "Room" }),
+        el("div", { className: "session" }, canvas,
+          el("div", {}, el("span", { className: "caps", textContent: "Phones join at" }), el("span", { className: "big", textContent: `${location.host}/play` }), el("a", { href: playUrl, textContent: playUrl }), newBtn)),
+        count, list,
+        el("div", { className: "row tools" },
+          el("button", { onclick: () => addBots(3) }, icon("plus"), "3 bots"),
+          el("button", { onclick: () => addBots(10, true) }, icon("plus"), "10 spectator bots")),
+      ),
+      el("section", { className: "group monitor" },
+        el("h2", { className: "caps", textContent: "Monitor" }),
+        scoresEl,
         pulseEl,
       ),
     ),
@@ -381,7 +392,6 @@ function mount(code: string) {
     const s = round.status;
     const left = s === "live" ? round.startsAt! + round.durationMs - now : s === "rating" ? round.ratingEndsAt! - now : 0;
     roundEl.textContent = `Round ${round.id}`;
-    stateEl.textContent = s;
     stateEl.dataset.status = s;
     timeEl.textContent = left > 0 ? `${Math.ceil(left / 1000)} s` : "";
     timeEl.classList.toggle("urgent", s === "live" && left > 0 && left <= 10_000);
@@ -459,7 +469,8 @@ function mount(code: string) {
     if (list.contains(document.activeElement) && document.activeElement instanceof HTMLInputElement) return; // don't eat typing
     const live = Object.entries(players).filter(([, p]) => !p.removed).sort((a, b) => a[1].joinedAt - b[1].joinedAt);
     const filled = SLOT_ROLES.filter((r) => round?.slots?.[r]).length;
-    count.textContent = `Creators ${filled}/${SLOT_ROLES.length} · Spectators ${live.length - filled} · Players ${live.length}`;
+    count.textContent = `Creators ${filled}/${SLOT_ROLES.length} · Spectators ${live.length - filled} · ${live.length} in the room`;
+    if (!live.length) return void list.replaceChildren(el("p", { className: "empty", textContent: "No one has joined yet. Phones scan the QR, or add bots to rehearse." }));
     list.replaceChildren(...live.map(([uid, p]) => {
       const nick = el("input", { value: p.nick, maxLength: NICK_MAX, onchange: () => {
         const v = nick.value.trim().slice(0, NICK_MAX);
@@ -470,10 +481,12 @@ function mount(code: string) {
         el("option", { value: "", textContent: "Spectator" }),
         ...SLOT_ROLES.map((r) => el("option", { value: r, textContent: r })));
       slot.value = p.slot ?? "";
-      return el("div", { className: "p" },
+      const row = el("div", { className: "p" },
         el("span", { className: `dot${p.connected ? " on" : ""}`, title: p.connected ? "online" : "offline" }),
         nick, slot, el("span", { className: "hint", textContent: p.isBot ? "bot" : "" }),
         el("button", { textContent: "Remove", onclick: () => remove(uid) }));
+      if (p.slot) { row.dataset.slot = p.slot; row.style.setProperty("--hue", `var(--role-${p.slot})`); }
+      return row;
     }));
   }
 

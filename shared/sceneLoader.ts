@@ -42,4 +42,4 @@ export function loadScene(raw: unknown): Scene {
 }
 
 /** Bundled scenes for the host picker. */
-export const BUNDLED_SCENES: Scene[] = [loadScene(rushHour), loadScene(diner), loadScene(vigilante)];
+export const BUNDLED_SCENES: Scene[] = [loadScene(vigilante), loadScene(diner), loadScene(rushHour)];

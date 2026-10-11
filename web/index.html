@@ -5,123 +5,202 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0b0b0f" />
     <meta name="description" content="A cooperative icebreaker: three people, three dials, one artwork." />
-    <title>Murmuration</title>
+    <title>Murmuration — three people, three dials, one artwork</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preload" href="/fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/instrument-sans-latin.woff2" as="font" type="font/woff2" crossorigin />
     <style>
-      /* Art direction §2–§4, §8, §10: dark gallery, one sodium accent, flat hairline surfaces, flock motif. Fonts self-hosted (venue WiFi). */
-      @font-face {
-        font-family: "Bricolage Grotesque";
-        src: url("/fonts/bricolage-grotesque-latin.woff2") format("woff2");
-        font-weight: 200 800;
-        font-stretch: 75% 100%;
-        font-display: swap;
-        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-      }
-      @font-face {
-        font-family: "Instrument Sans";
-        src: url("/fonts/instrument-sans-latin.woff2") format("woff2");
-        font-weight: 400 700;
-        font-display: swap;
-        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-      }
-      :root {
-        color-scheme: dark;
-        --ink-0: #0b0b0f;
-        --surface-1: #15151c;
-        --surface-2: #1f1f29;
-        --hairline: #3a3a48;
-        --text-primary: #f4efe6;
-        --text-secondary: #b8b2a7;
-        --text-muted: #9a948a;
-        --accent: #ffb45a;
-        --accent-ink: #1a1206;
-        --role-palette: #e88a6a;
-        --role-form: #7fb3d5;
-        --role-motion: #b48eeb;
-        --display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
-        --text: "Instrument Sans", system-ui, sans-serif;
-        --ease-standard: cubic-bezier(0.2, 0, 0, 1);
-      }
-      * { box-sizing: border-box; }
-      html, body { margin: 0; background: var(--ink-0); color: var(--text-primary); font: 500 17px/1.4 var(--text); -webkit-text-size-adjust: 100%; }
-      p { margin: 0; }
-      .caps { font: 600 14px/1.4 var(--text); text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-secondary); }
+      /* Landing (art direction §12): a flight line. Hard left edge, display type pushed right, the flock owns the empty field. */
+      html { scroll-behavior: smooth; }
+      body { cursor: url("/cursor.svg") 10 10, auto; overflow-x: hidden; }
+      a, button, input, label { cursor: pointer; }
+      input { cursor: text; }
 
-      /* Flock sits behind the right of the page on laptops, behind the header on phones; never over controls */
-      .flock { position: fixed; top: 0; right: 0; width: 60vw; height: 100vh; height: 100dvh; pointer-events: none; }
+      .flock { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+      /* Ink fade: the only gradient on this page; keeps body text ≥ 7:1 over the flock */
+      .fade { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: linear-gradient(90deg, var(--ink-0) 0%, var(--ink-0) 28%, rgba(11, 11, 15, 0) 70%); }
+      .top, main { position: relative; z-index: 1; }
 
-      main { position: relative; min-height: 100vh; min-height: 100dvh; max-width: 1200px; margin: 0 auto; padding: 48px 5vw; display: flex; flex-direction: column; justify-content: center; gap: 48px; }
-      header { display: flex; flex-direction: column; gap: 24px; animation: enter 480ms var(--ease-standard) backwards; }
-      .wordmark { margin: 0; font: 800 clamp(48px, 12vw, 168px)/0.95 var(--display); font-stretch: 90%; letter-spacing: -0.03em; }
-      .pitch { max-width: 20ch; font: 600 clamp(28px, 3.4vw, 48px)/1.1 var(--display); letter-spacing: -0.01em; text-wrap: balance; }
-      .body { max-width: 36rem; color: var(--text-secondary); }
+      .top { position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 0 5vw; background: rgba(11, 11, 15, 0.72); border-bottom: 1px solid transparent; }
+      .top.lined { border-bottom-color: var(--hairline); }
+      nav { display: flex; gap: 32px; }
+      nav a { text-decoration: none; color: var(--text-secondary); padding: 8px 0; min-height: 40px; display: inline-flex; align-items: center; transition: color var(--dur-standard); }
+      nav a:hover { color: var(--text-primary); }
+      nav a.go { color: var(--accent); }
 
-      /* The three dials, as the product shows them: role-hue dot + label (role hues only in badges, §2.2) */
-      .dials { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
-      .badge { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border: 1px solid var(--hairline); border-radius: 999px; background: var(--surface-1); font: 600 14px/1 var(--text); text-transform: uppercase; letter-spacing: 0.12em; }
-      .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--hue); }
+      main { padding: 0 5vw 96px; max-width: 1600px; margin: 0 auto; }
+      section { position: relative; }
 
-      .cta { display: flex; flex-direction: column; gap: 24px; max-width: 32rem; animation: enter 480ms 120ms var(--ease-standard) backwards; }
-      .host { display: flex; flex-direction: column; justify-content: center; gap: 4px; min-height: 72px; padding: 12px 20px; border: 1px solid var(--accent); border-radius: 16px; background: var(--accent); color: var(--accent-ink); text-decoration: none; transition: transform 120ms var(--ease-standard); }
-      .host strong { font: 700 22px/1.15 var(--display); }
-      .host span { font: 500 15px/1.3 var(--text); }
-      .host:hover { border-color: var(--text-primary); }
-      .host:active, .join button:active { transform: scale(0.98); }
-      .join { display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface-1); }
-      .join .row { display: flex; gap: 8px; }
-      .join input { flex: 1; min-width: 0; min-height: 56px; padding: 0 16px; border: 1px solid var(--hairline); border-radius: 16px; background: var(--surface-2); color: var(--text-primary); font: 700 22px/1 var(--display); letter-spacing: 0.12em; text-transform: uppercase; }
-      .join input::placeholder { color: var(--text-muted); font: 500 17px var(--text); letter-spacing: 0; text-transform: none; }
-      .join button { min-width: 96px; min-height: 56px; padding: 0 20px; border: 1px solid var(--hairline); border-radius: 16px; background: var(--surface-2); color: var(--text-primary); font: 600 17px/1 var(--text); cursor: pointer; touch-action: manipulation; transition: transform 120ms var(--ease-standard); }
-      .join button:hover { border-color: var(--text-secondary); }
-      .hint { font-size: 14px; color: var(--text-muted); }
-      a:focus-visible, input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+      /* Hero: statement top-left, paths right, wordmark across the bottom */
+      .hero { display: grid; grid-template-columns: minmax(0, 7fr) minmax(320px, 5fr); grid-template-rows: 1fr auto; gap: 24px 64px; min-height: calc(100vh - 64px); min-height: calc(100dvh - 64px); padding: 32px 0 24px; }
+      .hero .copy { display: flex; flex-direction: column; justify-content: center; gap: 24px; }
+      .eyebrow { display: flex; align-items: center; gap: 12px; }
+      .eyebrow::before { content: ""; width: 48px; height: 1px; background: var(--accent); }
+      .statement { display: flex; flex-direction: column; font: 500 clamp(40px, 5.6vw, 104px)/0.98 var(--display); letter-spacing: -0.02em; text-wrap: nowrap; }
+      .statement .l1 { font-stretch: 75%; color: var(--text-muted); }
+      .statement .l2 { font-stretch: 87%; color: var(--text-secondary); font-weight: 600; }
+      .statement .l3 { font-stretch: 100%; color: var(--text-primary); font-weight: 800; }
+      .lede { max-width: 46ch; color: var(--text-secondary); font-size: 19px; }
+      .lede b { color: var(--text-primary); font-weight: 600; }
 
-      @keyframes enter { from { opacity: 0; transform: translateY(8px); } }
-      @keyframes fade { from { opacity: 0; } }
+      .paths { align-self: end; display: flex; flex-direction: column; border-top: 1px solid var(--hairline); }
+      .path { display: grid; grid-template-columns: 1fr 24px; grid-template-rows: auto auto; align-items: center; gap: 4px 16px; min-height: 88px; padding: 20px 0; border-bottom: 1px solid var(--hairline); text-decoration: none; color: var(--text-primary); transition: padding-left var(--dur-standard) var(--ease-standard); }
+      .path:hover { padding-left: 8px; }
+      .path strong { grid-column: 1; grid-row: 1; font: 700 24px/1.1 var(--display); letter-spacing: -0.01em; }
+      .path span { grid-column: 1; grid-row: 2; color: var(--text-secondary); font-size: 15px; }
+      .path .icon { grid-column: 2; grid-row: 1 / 3; color: var(--text-muted); transition: color var(--dur-standard), transform var(--dur-standard) var(--ease-standard); }
+      .path:hover .icon { color: var(--accent); transform: translateX(4px); }
+      .path.primary strong { color: var(--accent); }
+      .join label { display: contents; }
+      .join .code { display: flex; align-items: center; gap: 12px; grid-column: 1 / 3; grid-row: 3; margin-top: 8px; }
+      .join input { width: 6.6ch; min-height: 56px; padding: 0 8px; border: 0; border-bottom: 2px solid var(--hairline); border-radius: 0; background: transparent; color: var(--text-primary); font: 700 32px/1 var(--display); letter-spacing: 0.32em; text-transform: uppercase; text-indent: 0.16em; transition: border-color var(--dur-standard); }
+      .join input::placeholder { color: var(--hairline); letter-spacing: 0.32em; }
+      .join input:focus { outline: none; border-bottom-color: var(--accent); }
+      .join button { min-width: 72px; }
 
-      /* Phone: content top-aligned, actions in the bottom 60% (thumb zone), 20 px side padding */
-      @media (max-width: 720px) {
-        .flock { width: 100vw; height: 45vh; height: 45dvh; }
-        main { justify-content: flex-start; gap: 32px; padding: 32px 20px; }
-        header { padding-top: 12vh; }
-        .cta { margin-top: auto; }
+      .wordmark { grid-column: 1 / -1; align-self: end; margin: 0; font: 800 clamp(56px, 11.8vw, 220px)/0.8 var(--display); font-stretch: 90%; letter-spacing: -0.04em; white-space: nowrap; color: var(--text-primary); }
+      .wordmark small { display: block; margin-bottom: 16px; font: 600 14px/1.4 var(--text); letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); }
+
+      /* Chapters: ghost numeral on the rail, content to the right */
+      .chapter { display: grid; grid-template-columns: minmax(120px, 2fr) minmax(0, 10fr); gap: 24px 64px; padding: 128px 0; border-top: 1px solid var(--hairline); }
+      .ghost { font: 800 clamp(96px, 11vw, 200px)/0.8 var(--display); letter-spacing: -0.05em; color: var(--bone); opacity: 0.12; font-variant-numeric: tabular-nums; }
+      .chapter h2 { font: 700 clamp(32px, 4vw, 64px)/1.02 var(--display); letter-spacing: -0.02em; max-width: 18ch; text-wrap: balance; }
+      .chapter .body { max-width: 58ch; color: var(--text-secondary); font-size: 19px; margin-top: 24px; }
+      .chapter .content { display: flex; flex-direction: column; }
+
+      .roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-top: 64px; }
+      .role { display: flex; flex-direction: column; gap: 16px; padding-top: 16px; border-top: 1px solid var(--hairline); }
+      .role .badge { align-self: flex-start; }
+      .role ol { display: flex; flex-direction: column; gap: 6px; font: 600 clamp(18px, 1.6vw, 24px)/1.2 var(--display); counter-reset: o; }
+      .role li { display: flex; gap: 12px; align-items: baseline; }
+      .role li::before { counter-increment: o; content: "0" counter(o); font: 600 12px/1 var(--text); letter-spacing: 0.12em; color: var(--text-muted); min-width: 24px; }
+      .role p { font-size: 15px; color: var(--text-muted); }
+
+      /* Round timeline: hairline with ticks */
+      .timeline { display: grid; grid-template-columns: 5fr 1.4fr 1.4fr 3fr 2fr; margin-top: 64px; border-top: 1px solid var(--hairline); }
+      .tick { position: relative; padding: 20px 16px 0 0; font-size: 15px; color: var(--text-secondary); }
+      .tick::before { content: ""; position: absolute; left: 0; top: -1px; width: 1px; height: 12px; background: var(--text-secondary); }
+      .tick b { display: block; font: 700 20px/1.1 var(--display); color: var(--text-primary); margin-bottom: 4px; }
+      .tick.hot::before { background: var(--accent); height: 20px; }
+      .tick.hot b { color: var(--accent); }
+
+      .judges { display: flex; flex-direction: column; margin-top: 64px; border-top: 1px solid var(--hairline); }
+      .judge { display: grid; grid-template-columns: minmax(200px, 3fr) minmax(0, 7fr) auto; gap: 16px 32px; align-items: baseline; padding: 24px 0; border-bottom: 1px solid var(--hairline); }
+      .judge b { font: 700 clamp(22px, 2vw, 32px)/1.1 var(--display); letter-spacing: -0.01em; }
+      .judge p { color: var(--text-secondary); max-width: 60ch; }
+      .judge .caps { justify-self: end; color: var(--text-muted); }
+
+      .end { display: grid; grid-template-columns: minmax(0, 7fr) minmax(320px, 5fr); gap: 48px 64px; padding: 128px 0 0; border-top: 1px solid var(--hairline); align-items: end; }
+      .end .fine { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 24px; color: var(--text-muted); font-size: 14px; }
+
+      /* Reveal on scroll: translate + fade, children wave in */
+      .reveal > * { opacity: 0; transform: translateY(var(--shift)); transition: opacity var(--dur-enter) var(--ease-standard), transform var(--dur-enter) var(--ease-standard); transition-delay: calc(var(--i, 0) * var(--stagger)); }
+      .reveal.in > * { opacity: 1; transform: none; }
+
+      @media (max-width: 960px) {
+        .hero { grid-template-columns: 1fr; grid-template-rows: auto auto auto; padding-top: 32px; }
+        .hero .copy { justify-content: flex-start; }
+        .statement { font-size: clamp(40px, 12vw, 72px); }
+        .wordmark { font-size: 15.6vw; margin-top: 24px; }
+        .chapter { grid-template-columns: 1fr; gap: 8px; padding: 80px 0; }
+        .ghost { font-size: 96px; }
+        .roles { grid-template-columns: 1fr; gap: 16px; margin-top: 40px; }
+        .timeline { grid-template-columns: 1fr 1fr; gap: 24px 0; }
+        .judge { grid-template-columns: 1fr; gap: 8px; }
+        .judge .caps { justify-self: start; }
+        .end { grid-template-columns: 1fr; padding-top: 80px; }
+        .fade { background: linear-gradient(180deg, rgba(11, 11, 15, 0) 0%, rgba(11, 11, 15, 0) 30%, var(--ink-0) 62%); }
+        nav a:not(.go) { display: none; }
+        nav { gap: 16px; }
       }
       @media (prefers-reduced-motion: reduce) {
-        header, .cta { animation-name: fade; }
+        html { scroll-behavior: auto; }
+        .reveal > * { transition: opacity var(--dur-standard); transform: none; }
+        .path, .path .icon { transition: none; }
       }
     </style>
   </head>
   <body>
-    <canvas class="flock" aria-hidden="true"></canvas>
+    <canvas id="flock" class="flock" aria-hidden="true"></canvas>
+    <div class="fade" aria-hidden="true"></div>
+    <header class="top">
+      <a class="brand" href="/" aria-label="Murmuration home"><span class="mark" id="mark"></span><span class="word">Murmuration</span></a>
+      <nav class="caps" aria-label="Site">
+        <a href="#how">How it works</a>
+        <a href="/demo/">Demo</a>
+        <a class="go" href="/host/">Host</a>
+      </nav>
+    </header>
     <main>
-      <header>
-        <p class="caps">A live art game for one room</p>
-        <h1 class="wordmark">Murmuration</h1>
-        <p class="pitch">A cooperative icebreaker: three people, three dials, one artwork.</p>
-        <p class="body">Phones scan a QR. Three Creators each turn one dial of the same piece on the big screen; everyone else rates it. A scene author, an AI judge and the room score the result.</p>
-        <ul class="dials" aria-label="The three dials">
-          <li class="badge" style="--hue: var(--role-palette)"><i class="dot"></i>Palette</li>
-          <li class="badge" style="--hue: var(--role-form)"><i class="dot"></i>Form</li>
-          <li class="badge" style="--hue: var(--role-motion)"><i class="dot"></i>Motion</li>
-        </ul>
-      </header>
-      <section class="cta">
-        <a class="host" href="/host/"><strong>Host a session</strong><span>On the laptop. Makes the QR and opens the big screen.</span></a>
-        <form class="join" action="/play/" method="get">
-          <label class="caps" for="s">Join on your phone</label>
-          <div class="row">
-            <input id="s" name="s" placeholder="Session code" maxlength="4" minlength="4" required autocomplete="off" autocapitalize="characters" spellcheck="false" pattern="[A-Za-z0-9]{4}" />
-            <button type="submit">Join</button>
+      <section class="hero" data-mode="hero">
+        <div class="copy enter">
+          <p class="caps eyebrow" style="--i: 0">A live art game for one room</p>
+          <h1 class="statement" style="--i: 1"><span class="l1">Three people.</span><span class="l2">Three dials.</span><span class="l3">One artwork.</span></h1>
+          <p class="lede" style="--i: 2">Phones scan a QR. Three <b>Creators</b> each own one dial of the same piece on the big screen: palette, form, or motion. Everyone else is a <b>Spectator</b> and rates what the room made. Nobody can finish it alone.</p>
+        </div>
+        <div class="paths enter" style="--i: 3">
+          <a class="path primary" href="/host/"><strong>Host a session</strong><span>On the laptop. Makes the code, the QR and the big screen.</span><span class="icon" data-icon="arrow"></span></a>
+          <form class="path join" action="/play/" method="get">
+            <label><strong>Join with a code</strong><span>Usually you just scan the QR on the big screen.</span></label>
+            <div class="code">
+              <input id="s" name="s" placeholder="ABCD" maxlength="4" minlength="4" required autocomplete="off" autocapitalize="characters" spellcheck="false" pattern="[A-Za-z0-9]{4}" aria-label="Session code" />
+              <button class="btn sm" type="submit">Join</button>
+            </div>
+          </form>
+          <a class="path" href="/demo/"><strong>Play the 60-second demo</strong><span>No phone, no room. Just you, three dials and the three judges.</span><span class="icon" data-icon="arrow"></span></a>
+        </div>
+        <h2 class="wordmark"><small>Murmuration, n. &mdash; a flock of starlings turning as one shape, with no leader</small>Murmuration</h2>
+      </section>
+
+      <section class="chapter reveal" id="how" data-mode="groups">
+        <div class="ghost" aria-hidden="true">01</div>
+        <div class="content">
+          <h2 style="--i: 0">One dial each. Nobody holds the whole thing.</h2>
+          <p class="body" style="--i: 1">The first three phones to join become Creators. Each one owns a single dial of the shared scene and picks from four options written for that scene. One tap changes hundreds of things on screen; the other two dials belong to someone else.</p>
+          <ul class="roles" id="roles" style="--i: 2"></ul>
+        </div>
+      </section>
+
+      <section class="chapter reveal" data-mode="roam">
+        <div class="ghost" aria-hidden="true">02</div>
+        <div class="content">
+          <h2 style="--i: 0">The screen eases toward whatever the room decides.</h2>
+          <p class="body" style="--i: 1">A prompt is drawn from the scene (“Calm but urgent”, “It is six PM and you are already late”). The timer runs on server time. Every change glides in over about a second; nothing jump-cuts. At zero the piece locks, settles, and is captured. That frame is what gets judged.</p>
+          <div class="timeline" style="--i: 2">
+            <div class="tick"><b>Live</b>60, 90 or 120 s. Creators can change their mind until zero.</div>
+            <div class="tick hot"><b>Lock</b>No take-backs.</div>
+            <div class="tick"><b>Settle</b>1.5 s hush.</div>
+            <div class="tick"><b>Rate</b>12–25 s. Spectators tap 1–5, once.</div>
+            <div class="tick"><b>Reveal</b>Three scores, one verdict.</div>
           </div>
-          <p class="hint">Usually you just scan the QR on the big screen.</p>
-        </form>
-        <p class="hint">The big screen opens from the host page.</p>
+        </div>
+      </section>
+
+      <section class="chapter reveal" data-mode="settle">
+        <div class="ghost" aria-hidden="true">03</div>
+        <div class="content">
+          <h2 style="--i: 0">Three judges. One of them is the room.</h2>
+          <p class="body" style="--i: 1">Scores show separately, then combine. The artwork is judged, never the people.</p>
+          <div class="judges" style="--i: 2">
+            <div class="judge"><b>Scene Author’s taste</b><p>Whoever made the scene ranked every option before the round. Deterministic, hidden until the reveal.</p><span class="caps">No AI</span></div>
+            <div class="judge"><b>AI judge</b><p>Sees the locked frame once, after the round, and speaks a 20-second verdict out loud. It never touches the live canvas.</p><span class="caps">After lock only</span></div>
+            <div class="judge"><b>Audience</b><p>Everyone who is not holding a dial rates 1–5 from their phone. Trimmed mean, one vote per device.</p><span class="caps">The room</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="end reveal" id="join" data-mode="roam">
+        <div style="--i: 0">
+          <p class="caps eyebrow">Ready when the room is</p>
+          <h2 class="wordmark" style="margin-top: 24px">Murmuration</h2>
+          <p class="fine"><span>No accounts</span><span>No app</span><span>Phones only</span><span>Built at Hacklanta, Atlanta</span></p>
+        </div>
+        <div class="paths" style="--i: 1">
+          <a class="path primary" href="/host/"><strong>Host a session</strong><span>Opens the console; the big screen opens from there.</span><span class="icon" data-icon="arrow"></span></a>
+          <a class="path" href="/demo/"><strong>Play the demo</strong><span>About a minute, offline.</span><span class="icon" data-icon="arrow"></span></a>
+        </div>
       </section>
     </main>
-    <script type="module">
-      import { mountFlock } from "./lib/chrome/flock";
-      mountFlock(document.querySelector(".flock"), { count: 72 });
-    </script>
+    <script type="module" src="./main.ts"></script>
   </body>
 </html>

@@ -2,141 +2,37 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0b0b0f" />
     <title>Murmuration — Play</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preload" href="/fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/instrument-sans-latin.woff2" as="font" type="font/woff2" crossorigin />
     <style>
-      /* Art direction §2–§6, phone: 390 px reference, 20 px side padding, primary action in the bottom 60%. Fonts self-hosted (venue WiFi). */
-      @font-face {
-        font-family: "Bricolage Grotesque";
-        src: url("/fonts/bricolage-grotesque-latin.woff2") format("woff2");
-        font-weight: 200 800;
-        font-stretch: 75% 100%;
-        font-display: swap;
-        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-      }
-      @font-face {
-        font-family: "Instrument Sans";
-        src: url("/fonts/instrument-sans-latin.woff2") format("woff2");
-        font-weight: 400 700;
-        font-display: swap;
-        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-      }
-      :root {
-        color-scheme: dark;
-        --ink-0: #0b0b0f;
-        --surface-1: #15151c;
-        --surface-2: #1f1f29;
-        --hairline: #3a3a48;
-        --text-primary: #f4efe6;
-        --text-secondary: #b8b2a7;
-        --text-muted: #9a948a;
-        --accent: #ffb45a;
-        --accent-ink: #1a1206;
-        --urgent: #ff6b5e;
-        --ok: #6fd39b;
-        --role-palette: #e88a6a;
-        --role-form: #7fb3d5;
-        --role-motion: #b48eeb;
-        --role-texture: #9cb58a;
-        --role-mood: #d98cb3;
-        --display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
-        --text: "Instrument Sans", system-ui, sans-serif;
-        --ease-standard: cubic-bezier(0.2, 0, 0, 1);
-        --ease-stamp: cubic-bezier(0.34, 1.56, 0.64, 1);
-      }
-      * { box-sizing: border-box; }
-      html, body { margin: 0; background: var(--ink-0); color: var(--text-primary); font: 500 17px/1.4 var(--text); -webkit-text-size-adjust: 100%; }
-      #app { min-height: 100vh; min-height: 100dvh; max-width: 480px; margin: 0 auto; padding: 20px 20px 32px; display: flex; flex-direction: column; gap: 16px; }
-      h1 { margin: 0; font: 700 32px/1.1 var(--display); display: flex; align-items: center; gap: 12px; }
-      p { margin: 0; color: var(--text-secondary); }
-      .prompt { color: var(--text-primary); }
-      .hint { font-size: 14px; color: var(--text-muted); }
-      .caps { font: 600 14px/1.4 var(--text); text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-secondary); }
+      /* Phone (art direction §12): an instrument, not a form. 390 px reference, 20 px side padding, primary action in the bottom 60 %.
+         Tokens: lib/chrome/ui.css; keys, rail, rating, scores: lib/chrome/instrument.css (both imported by main.ts). */
+      html { height: 100%; }
+      body { min-height: 100%; overscroll-behavior: none; }
+      #app { position: relative; min-height: 100vh; min-height: 100dvh; max-width: 480px; margin: 0 auto; padding: 16px 20px calc(24px + env(safe-area-inset-bottom)); }
 
-      .head { display: flex; flex-direction: column; gap: 8px; }
-      .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; }
-      .wordmark { font: 800 48px/1 var(--display); font-stretch: 90%; letter-spacing: -0.03em; margin: 0 0 8px; }
-      .pitch { font: 600 22px/1.2 var(--display); color: var(--text-primary); text-wrap: balance; }
-      /* §8 flock strip: full-bleed top band on join + lobby waiting; the head overlaps its lower edge */
-      .flock { display: block; flex: none; width: calc(100% + 40px); height: 28vh; height: 28dvh; margin: -20px -20px -48px; pointer-events: none; }
-      /* Role badge: hairline picks up the role hue (§2.2: hues in badges only); no --hue = plain hairline */
-      .badge { display: inline-flex; align-items: center; align-self: flex-start; gap: 8px; height: 32px; padding: 0 12px; border: 1px solid color-mix(in srgb, var(--hue, var(--hairline)) 55%, var(--hairline)); border-radius: 999px; background: var(--surface-1); font: 600 14px/1 var(--text); text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-primary); }
-      .row .badge { align-self: center; }
-      .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--hue, var(--text-secondary)); }
-      .dot.ok { background: var(--ok); }
-      .who { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); }
-      .count { font: 700 48px/1 var(--display); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: var(--accent); transition: color 600ms linear; }
-      .count:empty { display: none; }
-      .count.urgent { color: var(--urgent); animation: pulse 1s ease-in-out infinite; }
-      @keyframes pulse { 50% { transform: scale(1.04); opacity: 0.7; } }
-      .banner { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface-1); font: 600 14px/1 var(--text); text-transform: uppercase; letter-spacing: 0.12em; }
-      .banner i, .dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--text-primary); animation: breathe 2s ease-in-out infinite; }
-      .dots { display: flex; gap: 8px; padding: 8px 0; }
-      .dots i:nth-child(2) { animation-delay: 0.25s; }
-      .dots i:nth-child(3) { animation-delay: 0.5s; }
-      @keyframes breathe { 50% { opacity: 0.2; } } /* 0.5 Hz, no spinners */
-      .icon { display: inline-flex; flex: none; }
-      .icon.ok { color: var(--ok); animation: fade 240ms 240ms var(--ease-standard) backwards; }
-
-      /* Bottom thumb zone */
-      .actions { margin-top: auto; display: flex; flex-direction: column; gap: 12px; }
-      button { width: 100%; min-height: 72px; padding: 0 20px; border: 1px solid var(--hairline); border-radius: 16px; background: var(--surface-2); color: var(--text-primary); font: 600 22px/1.15 var(--display); text-align: left; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; transition: transform 120ms var(--ease-standard), opacity 240ms var(--ease-standard); }
-      button:active:not(:disabled) { transform: scale(0.98); }
-      button:disabled { opacity: 0.5; cursor: default; }
-      button:focus-visible, .field:focus-visible, input[type="range"]:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-      button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); outline: 2px solid rgba(244, 239, 230, 0.4); outline-offset: -4px; }
-      button.on:disabled { outline: none; }
-      button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); text-align: center; }
-      button.secondary { min-height: 56px; font: 600 17px/1.2 var(--text); text-align: center; }
-      .field { width: 100%; min-height: 56px; padding: 0 16px; border: 1px solid var(--hairline); border-radius: 16px; background: var(--surface-2); color: var(--text-primary); font: 500 17px var(--text); }
-      .field::placeholder { color: var(--text-muted); }
-
-      /* Rating: five in a row, write-once */
-      .rate { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-      .rate button { min-height: 72px; min-width: 0; padding: 0; text-align: center; font-size: 28px; font-variant-numeric: tabular-nums; }
-      .rate button.on:disabled { opacity: 1; }
-      .rate button.dim:disabled { opacity: 0.4; }
-      .rate.stamp button { animation: stamp 320ms var(--ease-stamp) backwards; animation-delay: calc(var(--i) * 120ms); }
-      .scale { display: flex; justify-content: space-between; }
-      @keyframes stamp { from { opacity: 0; transform: scale(1.15); } }
+      /* Join and lobby: the flock lives in a full-bleed band at the top; the brand sits on its lower edge */
+      .flock { display: block; flex: none; width: calc(100% + 40px); height: 30vh; height: 30dvh; margin: -16px -20px -56px; pointer-events: none; }
+      .brand { position: relative; }
+      .pitch { font: 600 26px/1.15 var(--display); letter-spacing: -0.01em; color: var(--text-primary); text-wrap: balance; }
+      .code { display: inline-flex; align-items: center; gap: 10px; font: 700 15px/1 var(--display); letter-spacing: 0.24em; color: var(--text-secondary); }
+      .code b { color: var(--text-primary); }
 
       /* Energy dial (Spectators, live) */
       input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 56px; margin: 0; background: transparent; }
       input[type="range"]:disabled { opacity: 0.5; }
-      input[type="range"]::-webkit-slider-runnable-track { height: 8px; border: 1px solid var(--hairline); border-radius: 999px; background: var(--surface-2); }
-      input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 32px; height: 32px; margin-top: -13px; border: 0; border-radius: 50%; background: var(--accent); }
-      input[type="range"]::-moz-range-track { height: 8px; border: 1px solid var(--hairline); border-radius: 999px; background: var(--surface-2); }
+      input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: var(--hairline); }
+      input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 32px; height: 32px; margin-top: -15px; border: 0; border-radius: 50%; background: var(--accent); }
+      input[type="range"]::-moz-range-track { height: 2px; background: var(--hairline); }
       input[type="range"]::-moz-range-thumb { width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--accent); }
-
-      /* Creator "You made this" card; the role hue is allowed here only */
-      .card { display: flex; flex-direction: column; gap: 16px; padding: 24px 20px; border: 1px solid var(--hue, var(--hairline)); border-radius: 12px; background: var(--surface-2); }
-      .card .badge { background: transparent; }
-      .pick { font: 700 32px/1.1 var(--display); }
-
-      /* Scores (Beat 9) */
-      .scores { display: flex; flex-direction: column; border: 1px solid var(--hairline); border-radius: 12px; background: var(--surface-1); }
-      .sc { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0 12px; padding: 12px 16px; border-top: 1px solid var(--hairline); }
-      .sc:first-child { border-top: 0; }
-      .sc .num { font: 700 32px/1.1 var(--display); font-variant-numeric: tabular-nums; }
-      .sc .hint { grid-column: 1 / 3; }
-      .sc.total .num { font-size: 48px; letter-spacing: -0.01em; color: var(--accent); }
-      .scores.later { animation: fade 240ms var(--ease-standard) backwards; animation-delay: var(--d); }
-
-      /* Screen changes: 240 ms enter; reduced motion keeps the fade, drops the slide */
-      #app.enter > * { animation: enter 240ms var(--ease-standard) backwards; }
-      @keyframes enter { from { opacity: 0; transform: translateY(8px); } }
-      @keyframes fade { from { opacity: 0; } }
-      @media (prefers-reduced-motion: reduce) {
-        #app.enter > * { animation-name: fade; }
-        .rate.stamp button { animation-name: fade; animation-timing-function: var(--ease-standard); }
-      }
     </style>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app" class="instrument"></div>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

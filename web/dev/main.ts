@@ -3,7 +3,7 @@ import { BUNDLED_SCENES } from "../../shared/sceneLoader";
 import { resolveTarget } from "../lib/renderer/params";
 import { mountRenderer } from "../lib/renderer/sketch";
 
-const scene = BUNDLED_SCENES[0]; // rush-hour
+const scene = BUNDLED_SCENES[0]; // vigilante (Batman in Atlanta)
 const options = scene.options;
 const ROLES: Role[] = ["palette", "form", "motion"]; // solo plan: texture/mood stay neutral
 
