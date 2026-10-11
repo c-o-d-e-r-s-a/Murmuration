@@ -139,7 +139,7 @@ async function start() {
 
   const playUrl = `${location.origin}/play/?s=${code}`;
   const qr = document.createElement("canvas");
-  QRCode.toCanvas(qr, playUrl, { width: Math.round(window.innerHeight * 0.5), margin: 0, color: { dark: "#0B0B0F", light: "#F4EFE6" } });
+  QRCode.toCanvas(qr, playUrl, { width: Math.round(window.innerHeight * 0.52), margin: 0, color: { dark: "#0B0B0F", light: "#F4EFE6" } });
   $(".qr").append(qr);
   $(".code").textContent = code;
   $(".url").textContent = playUrl;
@@ -162,6 +162,7 @@ async function start() {
   };
   requestAnimationFrame(railFrame);
   const tick = () => {
+    if (round?.status === "locked") return void (countEl.textContent = "0:00");
     if (round?.status !== "live" || round.startsAt == null) return;
     const left = Math.max(0, Math.min(round.durationMs, round.startsAt + round.durationMs - serverNow()));
     const s = Math.ceil(left / 1000);
@@ -208,7 +209,14 @@ async function start() {
     $(".card .title").textContent = round.promptText ?? "";
     $(".joined").textContent = `Creators ${DIALS.filter(nickOf).length}/${DIALS.length} joined · ${people.length} here`;
     $(".dials").replaceChildren(...DIALS.map((r) => dialRow(r, nickOf(r))));
-    $(".credits").replaceChildren(...DIALS.filter(nickOf).map((r) => dialRow(r, nickOf(r), labelOf(r))));
+    // Rebuild only on change: the reveal slide-in restarts on new nodes.
+    const credits = DIALS.filter(nickOf).map((r) => dialRow(r, nickOf(r), labelOf(r)));
+    const creditsKey = credits.map((c) => c.textContent).join("|");
+    if ($(".credits").dataset.k !== creditsKey) {
+      credits.forEach((c, i) => c.style.setProperty("--i", String(i)));
+      $(".credits").replaceChildren(...credits);
+      $(".credits").dataset.k = creditsKey;
+    }
     $("#stage").classList.toggle("reveal", status === "reveal");
     syncReimagined(status === "reveal" && results.reimagined?.status === "ready" ? results.reimagined.url : undefined);
     if (status === "reveal") renderScores(!seenRender);
@@ -224,7 +232,7 @@ async function start() {
     if (shown.get(id) === (val ?? null)) return;
     shown.set(id, val ?? null);
     const tok = (el as any)._tok = {};
-    if (val == null) return void (el.textContent = "--");
+    if (val == null) return void (el.textContent = "—");
     if (instant) return void (el.textContent = val.toFixed(1));
     const t0 = performance.now() + delay;
     const step = () => {

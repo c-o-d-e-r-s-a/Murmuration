@@ -51,34 +51,41 @@
       #ui[data-s="live"] .credits { opacity: 1; }
       .small { font: 600 var(--fs-label)/1.3 var(--text); text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); }
 
-      /* lobby: QR card left 40%, info right 60% */
-      .lobby-card { left: 5vw; top: 5vh; bottom: 5vh; width: 34vw; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2vw; }
-      .qr { background: #f4efe6; padding: 1.7vw; }
+      /* lobby: QR card left 40%, info right 60%; both on panels because the artwork runs behind them (§11 item 8) */
+      .panel { background: rgba(21, 21, 28, 0.72); border: 1px solid var(--hairline); border-radius: 12px; box-sizing: border-box; }
+      .lobby-card { left: 5vw; top: 5vh; bottom: 5vh; width: 34vw; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.25vw; }
+      .qr { background: #f4efe6; padding: 1.667vw; }
       .qr canvas { display: block; }
       .code { font: 700 var(--fs-h2)/1 var(--display); letter-spacing: 0.12em; }
-      .lobby-info { left: 45vw; right: 5vw; top: 5vh; bottom: 5vh; display: flex; flex-direction: column; justify-content: center; gap: 1.4vw; }
+      .lobby-info { left: 45vw; right: 5vw; top: 5vh; bottom: 5vh; padding: 0 2.5vw; display: flex; flex-direction: column; justify-content: center; gap: 1.667vw; }
       .wordmark { font: 700 clamp(72px, 6.25vw, 168px)/1 var(--display); }
-      .dials { display: flex; flex-direction: column; gap: 0.9vw; }
-      .dial, .badge { display: flex; align-items: center; gap: 1vw; }
+      .dials { display: flex; flex-direction: column; gap: 0.833vw; }
+      .dial, .badge { display: flex; align-items: center; gap: 0.833vw; }
       .dot { width: 1.3vw; height: 1.3vw; border-radius: 50%; flex: none; }
       .dial .open { color: var(--text-secondary); }
 
       /* live: top bar + bottom strip */
-      .bar { left: 5vw; right: 5vw; top: 5vh; display: flex; justify-content: space-between; align-items: center; gap: 2vw; min-height: 5.83vw; padding: 0 1.5vw; background: rgba(21, 21, 28, 0.72); border: 1px solid var(--hairline); }
+      .bar { left: 5vw; right: 5vw; top: 5vh; display: flex; justify-content: space-between; align-items: center; gap: 1.667vw; min-height: 5.83vw; padding: 0 1.25vw; background: rgba(21, 21, 28, 0.72); border: 1px solid var(--hairline); }
       .prompt { max-width: 60%; font: 600 clamp(30px, 2.6vw, 70px)/1.15 var(--display); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-      .count { font: 700 clamp(72px, 6.25vw, 168px)/1 var(--display); font-variant-numeric: tabular-nums; color: var(--accent); }
-      .count.urgent { color: var(--urgent); }
-      .credits { left: 5vw; right: 5vw; bottom: 5vh; display: flex; gap: 2vw; padding: 1vw 1.5vw; background: rgba(21, 21, 28, 0.72); border: 1px solid var(--hairline); font: 600 var(--fs-label)/1.3 var(--text); }
+      .count { font: 700 clamp(72px, 6.25vw, 168px)/1 var(--display); font-variant-numeric: tabular-nums; color: var(--accent); transition: color 600ms; transform-origin: right center; }
+      /* §6.0: last 10 s eases to --urgent and pulses at 1 Hz, so colour is not the only signal */
+      .count.urgent { color: var(--urgent); animation: pulse 1s ease-in-out infinite; }
+      @keyframes pulse { 50% { transform: scale(1.04); opacity: 0.7; } }
+      /* Beat 1: countdown holds on 0:00 for 200 ms, then the live chrome leaves over 300 ms --ease-exit */
+      #ui[data-s="locked"] .live, #ui[data-s="locked"] .credits { transition: opacity 300ms cubic-bezier(0.4, 0, 1, 1) 200ms; }
+      .credits { left: 5vw; right: 5vw; bottom: 5vh; z-index: 1; display: flex; align-items: center; gap: 1.25vw; min-height: 5vw; box-sizing: border-box; padding: 0.833vw 1.25vw; background: rgba(21, 21, 28, 0.72); border: 1px solid var(--hairline); font: 600 var(--fs-label)/1.3 var(--text); }
       .credits:empty { display: none; }
 
       /* locked/rating/reveal: bottom scrim + title card (reveal: compressed to the top) */
       .scrim { left: 0; right: 0; bottom: 0; height: 40vh; background: linear-gradient(to top, rgba(11, 11, 15, 0.85), transparent); }
       #ui[data-s="rating"] .scrim, #ui[data-s="reveal"] .scrim { opacity: 1; }
       .card { left: 5vw; right: 5vw; bottom: 12vh; transition: all 480ms cubic-bezier(0.2, 0, 0, 1), opacity 480ms; }
-      .card .title { font: 700 clamp(48px, 4.4vw, 120px)/1.05 var(--display); max-width: 80%; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; border-top: 1px solid var(--hairline); padding-top: 1vw; margin-top: 0.6vw; }
+      .card .title { font: 700 clamp(48px, 4.4vw, 120px)/1.05 var(--display); max-width: 80%; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; border-top: 1px solid var(--hairline); padding-top: 0.833vw; margin-top: 0.625vw; }
       #ui[data-s="reveal"] .card { bottom: auto; top: 5vh; }
       #ui[data-s="reveal"] .card .title { font-size: var(--fs-h2); }
-      .judging { right: 5vw; top: 5vh; font: 600 var(--fs-h2)/1 var(--display); display: flex; align-items: center; gap: 1.2vw; }
+      /* Beat 4: scrim, title card and caption arrive 300 ms after the bloom (1800 ms after lock) */
+      #ui[data-s="rating"] .scrim, #ui[data-s="rating"] .card, #ui[data-s="rating"] .judging { transition-duration: 480ms; transition-delay: 300ms; }
+      .judging { right: 5vw; top: 5vh; font: 600 var(--fs-h2)/1 var(--display); display: flex; align-items: center; gap: 1.25vw; padding: 0.833vw 1.25vw; }
       .judging i { width: 0.7vw; height: 0.7vw; border-radius: 50%; background: var(--text-primary); animation: breathe 2s ease-in-out infinite; }
       .judging i:nth-child(2) { animation-delay: 0.25s; }
       .judging i:nth-child(3) { animation-delay: 0.5s; }
@@ -93,20 +100,30 @@
       #ui[data-s="reveal"] .card .title { max-width: 100%; }
       #ui[data-s="reveal"] .credits { transition-delay: 2600ms; }
       #ui.instant .credits { transition-delay: 0s; }
-      .board { right: 5vw; top: 5vh; width: 36vw; bottom: 16vh; padding: 1.5vw; background: rgba(21, 21, 28, 0.72); border: 1px solid var(--hairline); display: flex; flex-direction: column; gap: 1vw; box-sizing: border-box; }
+      .board { right: 5vw; top: 5vh; width: 36vw; bottom: 16vh; padding: 1.25vw; background: rgba(21, 21, 28, 0.72); border: 1px solid var(--hairline); display: flex; flex-direction: column; gap: 0.833vw; box-sizing: border-box; }
       #ui[data-s="reveal"] .board { opacity: 1; }
-      .sc { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0 1vw; opacity: 0; }
+      .sc { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0 0.833vw; opacity: 0; }
       .sc .num, .combined .num { font: 700 clamp(64px, 5.8vw, 156px)/1 var(--display); font-variant-numeric: tabular-nums; }
       .sc .cap { grid-column: 1 / 3; color: var(--text-secondary); font-size: var(--fs-body); }
-      .combined { text-align: center; opacity: 0; }
+      .combined { position: relative; isolation: isolate; text-align: center; opacity: 0; }
       .combined .num { font-size: clamp(120px, 10.4vw, 280px); font-weight: 800; color: var(--accent); }
-      .play-verdict { position: fixed; left: 5vw; bottom: 8vh; z-index: 5; padding: 1vh 2vw; font: inherit; font-size: var(--fs-label); color: var(--text-primary); background: var(--ink-0); border: 1px solid var(--text-primary); border-radius: 999px; cursor: pointer; }
+      /* Beat 7: second, smaller bloom behind the combined number (0 -> 0.3 -> 0 over 600 ms) */
+      .combined::before { content: ""; position: absolute; inset: -30% -10%; z-index: -1; opacity: 0; pointer-events: none; background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 35%, var(--text-primary)), transparent); }
+      #ui[data-s="reveal"] .combined::before { animation: bloom2 600ms 1600ms both; }
+      #ui.instant .combined::before { animation: none; }
+      @keyframes bloom2 { 50% { opacity: 0.3; } 100% { opacity: 0; } }
+      /* Sits at the right end of the credits strip; #ui ignores pointer events, the button must not */
+      .play-verdict { position: fixed; right: 6.25vw; bottom: calc(5vh + 0.833vw); z-index: 5; pointer-events: auto; padding: 0.625vw 1.25vw; font: inherit; font-size: var(--fs-label); color: var(--text-primary); background: var(--ink-0); border: 1px solid var(--text-primary); border-radius: 999px; cursor: pointer; }
       .play-verdict[hidden] { display: none; }
       #ui[data-s="reveal"] .sc { animation: stamp 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: calc(var(--i) * 400ms); }
       #ui[data-s="reveal"] .combined { animation: slam 260ms cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: 1600ms; }
       #ui.instant .sc, #ui.instant .combined { animation-duration: 1ms; animation-delay: 0s; }
       @keyframes stamp { from { opacity: 0; transform: scale(1.15); } to { opacity: 1; transform: none; } }
       @keyframes slam { from { opacity: 0; transform: scale(1.3); } to { opacity: 1; transform: none; } }
+      /* Beat 9: credit badges slide in from the left, 120 ms stagger, as the strip returns */
+      #ui[data-s="reveal"] .credits .dial { animation: slidein 480ms cubic-bezier(0.2, 0, 0, 1) both; animation-delay: calc(2600ms + var(--i) * 120ms); }
+      #ui.instant .credits .dial { animation: none; }
+      @keyframes slidein { from { opacity: 0; transform: translateX(-2.5vw); } }
 
       #msg { position: fixed; left: 5vw; top: 5vh; font: 600 var(--fs-h2) var(--display); }
 
@@ -137,12 +154,12 @@
   <body>
     <div id="stage"></div>
     <div id="ui" data-s="">
-      <div class="lobby lobby-card">
+      <div class="lobby lobby-card panel">
         <div class="qr"></div>
         <div class="code"></div>
         <div class="url"></div>
       </div>
-      <div class="lobby lobby-info">
+      <div class="lobby lobby-info panel">
         <div class="wordmark">Murmuration</div>
         <div class="scene-title small"></div>
         <div class="joined"></div>
@@ -155,13 +172,13 @@
       <div class="rail"></div>
       <div class="reimagined"><img alt="" /><span class="small">Reimagined with Gemini</span></div>
       <div class="board">
-        <div class="sc" style="--i: 0" data-k="author"><span class="small">Author's Taste</span><span class="num">--</span><span class="cap"></span></div>
-        <div class="sc" style="--i: 1" data-k="ai"><span class="small">AI Match</span><span class="num">--</span><span class="cap"></span></div>
-        <div class="sc" style="--i: 2" data-k="audience"><span class="small">Audience</span><span class="num">--</span><span class="cap"></span></div>
-        <div class="combined" data-k="combined"><div class="num">--</div><div class="small">Combined</div></div>
-        <button class="play-verdict" hidden>&#9654; Play verdict</button>
+        <div class="sc" style="--i: 0" data-k="author"><span class="small">Author's Taste</span><span class="num">—</span><span class="cap"></span></div>
+        <div class="sc" style="--i: 1" data-k="ai"><span class="small">AI Match</span><span class="num">—</span><span class="cap"></span></div>
+        <div class="sc" style="--i: 2" data-k="audience"><span class="small">Audience</span><span class="num">—</span><span class="cap"></span></div>
+        <div class="combined" data-k="combined"><div class="num">—</div><div class="small">Combined</div></div>
+        <button class="play-verdict" hidden>Play verdict</button>
       </div>
-      <div class="judging">The room is judging <i></i><i></i><i></i></div>
+      <div class="judging panel">The room is judging <i></i><i></i><i></i></div>
     </div>
     <div id="bloom"></div>
     <canvas id="burst"></canvas>
