@@ -12,6 +12,7 @@ import { BUNDLED_SCENES } from "../../shared/sceneLoader";
 import { audienceScore, authorScore, combined } from "../../shared/scoring";
 import { db, functions, httpsCallable, onValue, ref, serverNow, serverTimestamp, set, signIn, update } from "../lib/firebase";
 import { botPlan, drawPrompt, due, ratingCap, rotate } from "./machine";
+import { downloadBlob, downloadUrl, makePoster } from "./poster";
 
 // B2 lobby (session, QR, scene, duration, players, slots, bots) + B4 state machine T1–T8 (ROUND_STATE_MACHINE §2, D-10).
 // Solo scope (BUILD_ORDER §8): only three assignable roles; texture/mood stay neutral. Ratings/judge/reimagine/Tiger are P1.
@@ -108,6 +109,10 @@ function mount(code: string) {
   const rerollBtn = el("button", { textContent: "Reroll prompt", onclick: () => reroll() });
   const nextBtn = el("button", { textContent: "New round", onclick: () => newRound() });
   const resetBtn = el("button", { textContent: "Reset round", onclick: () => reset() });
+  const posterBtn = el("button", { textContent: "Download poster", onclick: () => poster() });
+  const reimBtn = el("button", { textContent: "Download Gemini image", onclick: () => {
+    if (results.reimagined?.url && round) downloadUrl(results.reimagined.url, `murmuration-${code}-${round.id}-gemini.png`);
+  } });
 
   app.replaceChildren(
     el("h1", { textContent: `Host — ${code}` }),
@@ -116,7 +121,7 @@ function mount(code: string) {
     el("p", {}, "Scene ", sceneSel, " Duration ", durSel),
     statusEl,
     el("p", {}, "Prompt: ", promptEl, " ", rerollBtn),
-    el("p", {}, startBtn, " ", nextBtn, " ", resetBtn),
+    el("p", {}, startBtn, " ", nextBtn, " ", resetBtn, " ", posterBtn, " ", reimBtn),
     scoresEl,
     errEl,
     el("p", {}, el("button", { textContent: "Add 3 bots", onclick: () => addBots(3) }), " ", el("button", { textContent: "Add 10 spectator bots", onclick: () => addBots(10, true) }), " ", newBtn),
@@ -193,6 +198,18 @@ function mount(code: string) {
       busy = false;
       errEl.textContent = `archive read failed: ${e.message}`;
     });
+  }
+
+  /** P2 poster (D-37): client-side PNG of the revealed round; never touches round state. */
+  function poster() {
+    const sc = scene();
+    if (round?.status !== "reveal" || !sc) return;
+    const id = round.id;
+    posterBtn.disabled = true;
+    makePoster({ scene: sc, round, results, choices, nickOf: (uid) => players[uid]?.nick ?? "?" })
+      .then((b) => downloadBlob(b, `murmuration-${code}-${id}.png`))
+      .catch((e) => (errEl.textContent = `poster failed: ${e.message}`))
+      .finally(() => (posterBtn.disabled = false));
   }
 
   /** T7 RESET: lobby without archiving; the aborted prompt becomes drawable again. */
@@ -341,7 +358,8 @@ function mount(code: string) {
     rerollBtn.hidden = startBtn.hidden = s !== "lobby";
     startBtn.disabled = filled() < MIN_CREATORS;
     startBtn.title = startBtn.disabled ? `Needs ${MIN_CREATORS} filled slots` : "";
-    nextBtn.hidden = s !== "reveal";
+    nextBtn.hidden = posterBtn.hidden = s !== "reveal";
+    reimBtn.hidden = s !== "reveal" || !results.reimagined?.url;
     resetBtn.hidden = s === "lobby";
     sceneSel.disabled = durSel.disabled = s !== "lobby";
   }
