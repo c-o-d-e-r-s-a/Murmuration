@@ -1,7 +1,8 @@
 import { get, push } from "firebase/database";
-import type { Choices, Player, Role, Round } from "../../shared/contracts";
+import type { Choices, Player, Results, Role, Round } from "../../shared/contracts";
 import { NICK_MAX } from "../../shared/contracts";
 import { BUNDLED_SCENES } from "../../shared/sceneLoader";
+import { downloadUrl } from "../lib/download";
 import { db, onValue, ref, serverNow, serverTimestamp, set, signIn, trackPresence, update } from "../lib/firebase";
 import { cleanNick } from "../lib/nick";
 
@@ -47,6 +48,7 @@ function run(uid: string) {
   let choices: Choices = {};
   let online = true;
   let rated: number | null = null; // own ratings/{uid} only; phones never listen to all ratings
+  let results: Results = {};
   let shownKey = ""; // re-render only when the visible state changes
   const banner = el("div", { textContent: "Reconnecting…" });
   banner.style.cssText = "padding:10px 12px;border-radius:12px;background:#5a2a22;font-weight:600";
@@ -70,13 +72,31 @@ function run(uid: string) {
     set(ref(db, `${base}/ratings/${uid}`), n).then(() => buzz(30), () => buzz([60, 40, 60]));
   }
 
+  /** Storage URLs only — no Gemini call. Buttons appear as each URL lands. */
+  function dlButtons() {
+    if (round?.status !== "reveal") return [];
+    const id = round.id;
+    const out: HTMLElement[] = [];
+    if (results.snapshotUrl) {
+      const b = el("button", { textContent: "Download artwork", onclick: () => downloadUrl(results.snapshotUrl!, `murmuration-${code}-${id}.jpg`) });
+      b.style.cssText = BTN;
+      out.push(b);
+    }
+    if (results.reimagined?.url) {
+      const b = el("button", { textContent: "Download Gemini image", onclick: () => downloadUrl(results.reimagined!.url!, `murmuration-${code}-${id}-gemini.png`) });
+      b.style.cssText = BTN;
+      out.push(b);
+    }
+    return out;
+  }
+
   function render() {
     if (!round || !me) return;
     const role = myRole();
     const scene = BUNDLED_SCENES.find((s) => s.id === round!.sceneId);
     const live = round.status === "live" && !!round.startsAt && serverNow() < endsAt();
     const mine = role ? choices[role]?.optionId : undefined;
-    const key = [me.removed, me.nick, role, round.id, round.status, mine, live, online, rated].join("|");
+    const key = [me.removed, me.nick, role, round.id, round.status, mine, live, online, rated, results.snapshotUrl ?? "", results.reimagined?.url ?? ""].join("|");
     if (key === shownKey) return;
     const prevRole = shownKey.split("|")[2];
     const prevStatus = shownKey.split("|")[4];
@@ -102,11 +122,11 @@ function run(uid: string) {
       badge.style.cssText = `font:600 14px system-ui,sans-serif;letter-spacing:.08em;color:${ROLE_HUE[role] ?? "#F4EFE6"}`;
       const card = el("div", {}, badge, el("h1", { textContent: "You made this" }), el("div", { textContent: label }), el("p", { textContent: "Scores on the big screen" }));
       card.style.cssText = "padding:16px;border-radius:12px;border:2px solid #4a443d;background:#2a2622";
-      return void app.replaceChildren(card);
+      return void app.replaceChildren(card, ...dlButtons());
     }
     if (!role || !scene) {
       const msg = round.status === "lobby" ? "Waiting for the round to start." : round.status === "live" ? "Watch the big screen." : round.status === "locked" ? "Locked, get ready to rate." : "Look at the big screen.";
-      return void app.replaceChildren(head, el("p", { textContent: msg }));
+      return void app.replaceChildren(head, el("p", { textContent: msg }), ...dlButtons());
     }
     const on = live && online;
     const buttons = scene.options[role].map((o) => {
@@ -123,6 +143,7 @@ function run(uid: string) {
   onValue(ref(db, `${base}/players/${uid}`), (s) => { me = s.val(); render(); });
   onValue(ref(db, `${base}/ratings/${uid}`), (s) => { rated = s.val(); render(); });
   onValue(ref(db, `${base}/choices`), (s) => { choices = s.val() ?? {}; render(); });
+  onValue(ref(db, `${base}/results`), (s) => { results = s.val() ?? {}; render(); });
   setInterval(() => {
     const s = round?.status === "live" && round.startsAt ? Math.ceil(Math.max(0, endsAt() - serverNow()) / 1000) : 0;
     count.textContent = round?.status === "live" ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : "";

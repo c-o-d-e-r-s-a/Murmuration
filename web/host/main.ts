@@ -12,7 +12,8 @@ import { BUNDLED_SCENES } from "../../shared/sceneLoader";
 import { audienceScore, authorScore, combined } from "../../shared/scoring";
 import { db, functions, httpsCallable, onValue, ref, serverNow, serverTimestamp, set, signIn, update } from "../lib/firebase";
 import { botPlan, drawPrompt, due, ratingCap, rotate } from "./machine";
-import { downloadBlob, downloadUrl, makePoster } from "./poster";
+import { downloadBlob, downloadUrl } from "../lib/download";
+import { makePoster } from "./poster";
 
 // B2 lobby (session, QR, scene, duration, players, slots, bots) + B4 state machine T1–T8 (ROUND_STATE_MACHINE §2, D-10).
 // Solo scope (BUILD_ORDER §8): only three assignable roles; texture/mood stay neutral. Ratings/judge/reimagine/Tiger are P1.
