@@ -75,7 +75,7 @@ murmuration/
 | `/screen?s=CODE` | Host laptop window 1, fullscreen (D-38) | `round`, `choices`, `players`, `results` | `results/snapshotRequested` (transaction), calls `judgeRound` | Passive renderer. Plays verdict audio. Can be refreshed at any time (D-20). |
 | `/play?s=CODE` | Every phone | `round`, own `players/{uid}`, scene options for own role | own `players/{uid}/nick`, own `choices/{role}`, own `ratings/{uid}` | Three screens: join, Creator (4 big buttons + prompt + timer) or Spectator (waiting / rate / result). |
 | `/dev` | Developers | none (local scene JSON) | none | Sliders for every RenderParam, scene picker, "simulate crowd" burst button. Same renderer module as `/screen`. |
-| `/replay?s=CODE&r=ROUND` | Anyone with the link | `rounds/{roundId}` | none | Re-runs the event log with the stored seed through the same renderer. OG meta via Hosting rewrite (P2). |
+| `/replay?s=CODE&r=ROUND` | Anyone with the link | `rounds/{roundId}` | none | Re-runs the event log with the stored seed through the same renderer. OG meta via Hosting rewrite of the share link `/replay/CODE/ROUND` to `replayOg` (P2, CONTRACTS §9). |
 | `/studio`, `/gallery` | P3 only | `/scenes`, `/gallery` | own draft scene | See brief §11. Not in the cut. |
 
 ## 5. Realtime model and the single-writer rule (D-10)
@@ -152,5 +152,5 @@ Per-session counters live in `sessions/{code}/meta/usage`. `/host` shows the fla
 ## 10. Environments and deploy
 
 - Local: `firebase emulators:start` (Auth, RTDB, Functions, Storage, Hosting) + `vite dev`. Rules unit tests run against the RTDB emulator.
-- Prod: `vite build && firebase deploy`. `main` is always deployable; tags `v0-p0`, `v1` (D-32). Hosting rewrites `/replay/**` to a function only if OG previews are built (P2); otherwise it is a static page.
+- Prod: `vite build && firebase deploy`. `main` is always deployable; tags `v0-p0`, `v1` (D-32). Hosting rewrites `/replay/*/*` (the share link) to `replayOg` (P2); `/replay/` itself stays the static page.
 - Domain (hour 0, D-34): `mybossdoeslameicebreakers.work`, registered at GoDaddy, added as a custom domain in Firebase Hosting (A/TXT records at GoDaddy DNS), used as the QR destination. Checklist in [SETUP.md](SETUP.md).

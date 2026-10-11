@@ -1,28 +1,30 @@
 # HANDOFF
 
 ## Done this session
-- **P2 pick-order 1, `/replay`** ([BUILD_ORDER](BUILD_ORDER.md) §5, lane A/B boundary): `web/replay/main.ts` + `web/replay/index.html` only. Anonymous sign-in, one `get` of `sessions/{s}/rounds/{r}`, mounts the `/screen` renderer with `round.seed`, local clock 0 → `durationMs`. Archived events (sorted by `t`) are applied inside the renderer's `clock()` so each draw sees the target for its time. At `t = durationMs` it remounts with `choices` (current = target, same as `/screen` after lock), scales the stage to 0.6, fires the bloom, shows author/AI/audience/combined + credits from `playersSnapshot`.
-- Errors (missing params, no archive, unknown scene, no seed/duration) show in `#msg`; no crash. Read-only: no `judgeRound`/reimagine/Tiger calls, no rules or functions changes.
-- Earlier (carried, not committed): P1-10, P1-7 parts 1–2, P1-6, P1-8 code, P1-4, P1-2, P1-9.
+- **P2 pick-order 2, replay OG preview** ([BUILD_ORDER](BUILD_ORDER.md) §5/§8, lane B): new `functions/src/replayOg.ts` (`onRequest`, us-central1) + `replayOg.test.ts`, exported from `functions/src/index.ts`; `firebase.json` hosting rewrite `/replay/*/*` → `replayOg`.
+- Share link is now **`/replay/CODE/rN`** (D-30 form). Crawler User-Agent → HTML with og:title (`<scene title> — <prompt>`), og:description, og:url, og:image (`results.snapshotUrl`, omitted if missing), twitter card. Any other UA → 302 to `/replay/?s=CODE&r=rN` (static app, unchanged).
+- Docs: CONTRACTS §9 (share-link shape + why), ARCHITECTURE route table + deploy line.
+- Earlier (carried, not committed): P2 `/replay` page, P1-10, P1-7 parts 1–2, P1-6, P1-8 code, P1-4, P1-2, P1-9.
 
 ## In progress / next
-- **`/replay` manual check** (not run in a browser): full round with bots → New round → open `/replay/?s=CODE&r=rN` → motion follows the events, ends in scores; refresh mid-replay restarts from 0 coherently.
-- Still open: P1-10, P1-7, P1-6 manual checks; P1-8 clips (ElevenLabs key).
+- **Deployed manual check**: `firebase deploy --only functions:replayOg,hosting` → `curl.exe -A "Twitterbot/1.0" https://<host>/replay/CODE/rN` shows og tags → same URL in Chrome lands on `/replay/?s=CODE&r=rN` and plays. Then paste into Discord/Slack.
+- Still open: `/replay` browser check; P1-10, P1-7, P1-6 manual checks; P1-8 clips (ElevenLabs key).
 
 ## Verify status
-- typecheck pass · lint pass · `npm test` pass · build pass (chunk-size warning only). Not run in a browser.
+- typecheck pass · lint pass · `npm test` pass · `replayOg.test.ts` pass (by hand) · build pass (chunk-size warning only) · functions `tsc` pass.
+- Emulator (hosting+functions+database, seeded fake archive): Twitterbot → og tags; Chrome UA → 302 to the query URL; missing round → title "Murmuration", no image; `/replay/?s=&r=` → static app 200.
 
 ## Decisions / docs
-- No new D-nn. Smoothing choice: events only move the target and the renderer eases, as live (frame-equivalent per CONTRACTS §5/§9).
-- Skipped: replay link on `/host`; the URL is typed by hand (`rN` = the round id shown on `/host`). Replay has no pause/restart UI (refresh restarts); no reveal audio/dot burst, no Reimagined panel.
+- No new D-nn; the chosen shape resolves the D-30 vs CONTRACTS §9 URL mismatch (path = share link, query = app URL). Recorded in CONTRACTS §9.
 
 ## Blockers / open items
 - Gemini image calls need AI Studio Prepay billing (402 → Reimagined fails, judge goes canned).
 - Carried: ElevenLabs key, hidden-/screen-at-lock gap, `meta.screenUid`, real-phone LAN, custom-domain auth.
 
 ## Gotchas
-- Only rounds archived by **New round** exist; Reset does not archive, and a round still in `reveal` has no archive yet.
-- Scene is looked up in `BUNDLED_SCENES`; a replay of a round from a scene removed from the bundle shows "Unknown scene".
-- The final remount catches up ~5k sim steps in one frame (same as `/screen`); a brief hitch at reveal is expected.
-- A background tab pauses rAF but the local clock keeps running, so events apply in a batch on return.
+- Hosting serves static files before rewrites: `/replay/?s=&r=` can never carry OG; only the path form does. Nothing generates the share link yet (no link on `/host`); type it by hand.
+- Hosting → function rewrites only work for us-central1; keep `replayOg` there.
+- Bot detection is a UA regex (`BOT_RE`); an unlisted crawler gets the 302 and sees the static page's plain `<title>`.
+- `og:url` uses `x-forwarded-host`; on the custom domain it should be that domain (unverified).
+- OG responses cache 5 min (`Cache-Control: public, max-age=300`), so a re-archived round updates after that.
 - `npm test` doesn't run `functions/src/*.test.ts`; run them by hand with `tsx`.

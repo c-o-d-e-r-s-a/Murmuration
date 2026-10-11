@@ -8,4 +8,5 @@ initializeApp();
 export {judgeRound} from "./judgeRound";
 export {logRoundEvents} from "./logRoundEvents";
 export {reimagineRound} from "./reimagineRound";
+export {replayOg} from "./replayOg";
 export {sessionPulse} from "./sessionPulse";

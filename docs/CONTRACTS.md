@@ -277,7 +277,7 @@ Full DDL lives in [DATA_SCHEMA.md §8](DATA_SCHEMA.md); the contract is:
 - `events/{push}` = `{ t: ms since startsAt (0..durationMs), role, optionId, uid }`.
 - Archived with the round under `rounds/{roundId}/events`.
 - `/replay?s=CODE&r=ROUND` loads `rounds/{roundId}`, sets `randomSeed/noiseSeed(seed)`, starts a local clock, applies each event when `localT >= event.t`, and renders with the same `RenderParams` pipeline; at `t = durationMs` it performs the lock/reveal visuals and shows the archived scores.
-- OG tags for the link (P2): `og:image = results.snapshotUrl`, `og:title = "<scene title> — <prompt>"`.
+- OG tags for the link (P2): `og:image = results.snapshotUrl`, `og:title = "<scene title> — <prompt>"`. The share link is `/replay/CODE/ROUND` (D-30); Hosting rewrites it to the `replayOg` function, which returns the meta page to link-preview crawlers (User-Agent match) and 302s browsers to `/replay?s=CODE&r=ROUND`. Hosting serves static files before rewrites, so the query form itself can't carry OG tags.
 
 ## 10. Nickname filter contract (`web/lib/nick.ts`, also run on `/host`)
 
