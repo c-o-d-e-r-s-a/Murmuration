@@ -4,7 +4,7 @@ import { BUNDLED_SCENES } from "../../../shared/sceneLoader";
 import { resolveTarget, toCurrent } from "./params";
 import { createLive, REF_H, REF_W, STEP_MS, stepLive, stepsAt } from "./live";
 
-const { options } = BUNDLED_SCENES[0];
+const { options } = BUNDLED_SCENES.find((s) => s.id === "rush-hour")!;
 const pick = (palette: string, form: string, motion: string) =>
   resolveTarget(options, {
     palette: { optionId: palette, uid: "u", at: 0 },
