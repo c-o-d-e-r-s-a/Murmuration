@@ -12,7 +12,7 @@
     <style>
       /* Landing (art direction §12): a flight line. Hard left edge, display type pushed right, the flock owns the empty field. */
       html { scroll-behavior: smooth; }
-      body { cursor: url("/cursor.svg") 10 10, auto; overflow-x: hidden; }
+      body { cursor: url("/cursor.svg") 10 10, auto; overflow-x: hidden; padding-top: 64px; }
       a, button, input, label { cursor: pointer; }
       input { cursor: text; }
 
@@ -21,10 +21,11 @@
       .fade { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: linear-gradient(90deg, var(--ink-0) 0%, var(--ink-0) 28%, rgba(11, 11, 15, 0) 70%); }
       main { position: relative; z-index: 1; }
 
-      .top { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 0 5vw; background: rgba(11, 11, 15, 0.72); border-bottom: 1px solid transparent; }
+      /* Fixed (not sticky): body overflow-x:hidden makes sticky lose hit-testing to main after scroll. */
+      .top { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 0 5vw; background: rgba(11, 11, 15, 0.92); border-bottom: 1px solid transparent; }
       .top.lined { border-bottom-color: var(--hairline); }
-      nav { display: flex; gap: 32px; }
-      nav a { text-decoration: none; color: var(--text-secondary); padding: 8px 0; min-height: 40px; display: inline-flex; align-items: center; transition: color var(--dur-standard); }
+      nav { display: flex; gap: 8px; }
+      nav a { text-decoration: none; color: var(--text-secondary); padding: 8px 12px; min-height: 40px; display: inline-flex; align-items: center; transition: color var(--dur-standard); }
       nav a:hover { color: var(--text-primary); }
       nav a.go { color: var(--accent); }
 
@@ -63,7 +64,7 @@
 
       /* Chapters: ghost numeral on the rail, content to the right */
       .chapter { display: grid; grid-template-columns: minmax(120px, 2fr) minmax(0, 10fr); gap: 24px 64px; padding: 128px 0; border-top: 1px solid var(--hairline); }
-      .ghost { font: 800 clamp(96px, 11vw, 200px)/0.8 var(--display); letter-spacing: -0.05em; color: var(--bone); opacity: 0.12; font-variant-numeric: tabular-nums; }
+      .ghost { font: 800 clamp(96px, 11vw, 200px)/0.8 var(--display); letter-spacing: -0.05em; color: var(--bone); opacity: 0.12; font-variant-numeric: tabular-nums; pointer-events: none; }
       .chapter h2 { font: 700 clamp(32px, 4vw, 64px)/1.02 var(--display); letter-spacing: -0.02em; max-width: 18ch; text-wrap: balance; }
       .chapter .body { max-width: 58ch; color: var(--text-secondary); font-size: 19px; margin-top: 24px; }
       .chapter .content { display: flex; flex-direction: column; }
