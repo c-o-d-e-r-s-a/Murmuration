@@ -1,6 +1,6 @@
 import { get, push } from "firebase/database";
 import type { Choices, Player, Results, Role, Round } from "../../shared/contracts";
-import { NICK_MAX } from "../../shared/contracts";
+import { ENERGY_WRITE_THROTTLE_MS, NICK_MAX } from "../../shared/contracts";
 import { BUNDLED_SCENES } from "../../shared/sceneLoader";
 import { downloadUrl } from "../lib/download";
 import { db, onValue, ref, serverNow, serverTimestamp, set, signIn, trackPresence, update } from "../lib/firebase";
@@ -72,6 +72,23 @@ function run(uid: string) {
     set(ref(db, `${base}/ratings/${uid}`), n).then(() => buzz(30), () => buzz([60, 40, 60]));
   }
 
+  // P2 energy: trailing throttle, at most one write per ENERGY_WRITE_THROTTLE_MS; value resets with each round (host clears the node).
+  let energyVal = 50, energyRound = "", energyTimer = 0, energyLast = 0;
+  function sendEnergy() {
+    if (energyTimer) return;
+    energyTimer = window.setTimeout(() => {
+      energyTimer = 0;
+      energyLast = performance.now();
+      set(ref(db, `${base}/energy/${uid}`), energyVal).catch(() => {});
+    }, Math.max(0, energyLast + ENERGY_WRITE_THROTTLE_MS - performance.now()));
+  }
+  function energyDial(on: boolean) {
+    const input = el("input", { type: "range", min: "0", max: "100", step: "1", value: String(energyVal), disabled: !on });
+    input.style.cssText = "width:100%;height:56px";
+    input.oninput = () => { energyVal = input.valueAsNumber; sendEnergy(); };
+    return el("div", {}, el("div", { textContent: "Energy" }), input);
+  }
+
   /** Storage URLs only — no Gemini call. Buttons appear as each URL lands. */
   function dlButtons() {
     if (round?.status !== "reveal") return [];
@@ -92,6 +109,7 @@ function run(uid: string) {
 
   function render() {
     if (!round || !me) return;
+    if (energyRound !== round.id) { energyRound = round.id; energyVal = 50; clearTimeout(energyTimer); energyTimer = 0; }
     const role = myRole();
     const scene = BUNDLED_SCENES.find((s) => s.id === round!.sceneId);
     const live = round.status === "live" && !!round.startsAt && serverNow() < endsAt();
@@ -126,7 +144,9 @@ function run(uid: string) {
     }
     if (!role || !scene) {
       const msg = round.status === "lobby" ? "Waiting for the round to start." : round.status === "live" ? "Watch the big screen." : round.status === "locked" ? "Locked, get ready to rate." : "Look at the big screen.";
-      return void app.replaceChildren(head, el("p", { textContent: msg }), ...dlButtons());
+      // P2 energy dial (D-08): Spectators only, during live.
+      const dial = round.status === "live" && !role ? [energyDial(live && online)] : [];
+      return void app.replaceChildren(head, el("p", { textContent: msg }), ...dial, ...dlButtons());
     }
     const on = live && online;
     const buttons = scene.options[role].map((o) => {

@@ -164,7 +164,7 @@ function mount(code: string) {
       ...(round.promptId ? {} : promptPaths(sc, meta.usedPromptIds, null)),
       "round/id": `r${n}`, "round/seed": Math.floor(Math.random() * 2 ** 32), "round/startsAt": serverNow(),
       "round/lockedAt": null, "round/ratingEndsAt": null, "round/status": "live", "round/statusVersion": v(),
-      choices: null, events: null, ratings: null, results: null, "meta/roundCounter": n,
+      choices: null, events: null, ratings: null, results: null, energy: null, "meta/roundCounter": n,
     };
     for (const [uid, p] of Object.entries(players)) {
       if (p.removed) continue;
@@ -181,7 +181,7 @@ function mount(code: string) {
     return {
       "round/status": "lobby", "round/startsAt": null, "round/lockedAt": null, "round/ratingEndsAt": null,
       "round/promptId": null, "round/promptText": null, "round/statusVersion": v(),
-      choices: null, events: null, ratings: null, results: null,
+      choices: null, events: null, ratings: null, results: null, energy: null,
       ...(sc ? promptPaths(sc, meta?.usedPromptIds, round!.promptId) : {}),
     };
   }

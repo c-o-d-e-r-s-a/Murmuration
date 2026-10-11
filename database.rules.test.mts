@@ -79,14 +79,25 @@ const ev = push(ref(alice, `${S}/events`)).key;
 await ok("append an event", set(ref(alice, `${S}/events/${ev}`), { t: 2000, role: "palette", optionId: "pal-x", uid: "alice" }));
 await denied("overwrite an event", set(ref(alice, `${S}/events/${ev}`), { t: 3000, role: "palette", optionId: "pal-y", uid: "alice" }));
 await ok("host writes a bot choice", tap(host, "form", "bot_1"));
+
+// Energy (P2): own uid, spectator, live window, integer 0..100; host may clear.
+await ok("spectator writes energy", set(ref(bob, `${S}/energy/bob`), 70));
+await denied("energy for someone else", set(ref(bob, `${S}/energy/dave`), 70));
+await denied("creator writes energy", set(ref(alice, `${S}/energy/alice`), 70));
+await denied("removed player writes energy", set(ref(carol, `${S}/energy/carol`), 70));
+await denied("energy out of range", set(ref(bob, `${S}/energy/bob`), 101));
+await denied("energy not an integer", set(ref(bob, `${S}/energy/bob`), 50.5));
+await ok("host clears energy", set(ref(host, `${S}/energy`), null));
 await ok("host moves the clock past the end", set(ref(host, `${S}/round/startsAt`), Date.now() - 61000));
 await denied("owner taps after the window", tap(alice, "palette", "alice"));
+await denied("energy after the window", set(ref(bob, `${S}/energy/bob`), 40));
 
 // Ratings: spectators only, once, 1..5, inside status rating + ratingEndsAt + 3 s.
 await denied("rate before rating opens", set(ref(bob, `${S}/ratings/bob`), 4));
 // startsAt moved back so only the status blocks the next tap.
 await ok("host enters rating", update(ref(host, `${S}/round`), { status: "rating", startsAt: Date.now(), lockedAt: Date.now() - 1500, ratingEndsAt: Date.now() + 12000, statusVersion: 3 }));
 await denied("owner taps when not live", tap(alice, "palette", "alice"));
+await denied("energy when not live", set(ref(bob, `${S}/energy/bob`), 40));
 await ok("spectator rates", set(ref(bob, `${S}/ratings/bob`), 4));
 await denied("spectator rates twice", set(ref(bob, `${S}/ratings/bob`), 5));
 await denied("creator rates", set(ref(alice, `${S}/ratings/alice`), 5));

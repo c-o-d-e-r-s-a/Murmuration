@@ -17,6 +17,15 @@ export function resolveTarget(options: Scene["options"] | undefined, choices: Ch
   return out;
 }
 
+/** P2 Spectator energy: mean of energy/{uid} (0..100) nudges speed and density by 0.7..1.3x. No writers = target unchanged. */
+export function applyEnergy(t: RenderParams, energy: Record<string, number> | null | undefined): RenderParams {
+  const v = Object.values(energy ?? {}).filter((n) => typeof n === "number");
+  if (!v.length) return t;
+  const mean = Math.min(100, Math.max(0, v.reduce((a, b) => a + b, 0) / v.length));
+  const m = 0.7 + 0.6 * (mean / 100);
+  return { ...t, energy: mean / 100, particleSpeed: t.particleSpeed * m, particleDensity: Math.min(1, t.particleDensity * m) };
+}
+
 const rgb = (hex: string): [number, number, number] => {
   const n = parseInt(hex.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];

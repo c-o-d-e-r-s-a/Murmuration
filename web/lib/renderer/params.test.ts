@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { EASE_NUMERIC_MS } from "../../../shared/contracts";
 import type { Scene } from "../../../shared/contracts";
 import { PRESETS } from "../../../shared/presets";
-import { ease, resolveTarget, toCurrent } from "./params";
+import { applyEnergy, ease, resolveTarget, toCurrent } from "./params";
 
 const options = {
   palette: [{ id: "a", presetId: "pal-neon", label: "A", authorScore: 10 }],
@@ -42,5 +42,14 @@ ease(a, t, 32);
 ease(b, t, 16);
 ease(b, t, 16);
 assert.ok(Math.abs(a.washOpacity - b.washOpacity) < 1e-12);
+
+// energy: no writers = unchanged; mean 50 = 1.0x; 0 / 100 = 0.7x / 1.3x; density capped at 1; input not mutated
+assert.equal(applyEnergy(neutral, {}), neutral);
+const e50 = applyEnergy(neutral, { a: 25, b: 75 });
+assert.ok(Math.abs(e50.particleSpeed - neutral.particleSpeed) < 1e-9 && e50.energy === 0.5);
+assert.ok(Math.abs(applyEnergy(neutral, { a: 0 }).particleSpeed - neutral.particleSpeed * 0.7) < 1e-9);
+assert.ok(Math.abs(applyEnergy(neutral, { a: 100 }).particleSpeed - neutral.particleSpeed * 1.3) < 1e-9);
+assert.ok(applyEnergy({ ...neutral, particleDensity: 0.95 }, { a: 100 }).particleDensity <= 1);
+assert.equal(neutral.energy, 0.5);
 
 console.log("renderer params self-check ok");

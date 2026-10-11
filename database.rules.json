@@ -103,6 +103,13 @@
             ".validate": "newData.val() == 1 || newData.val() == 2 || newData.val() == 3 || newData.val() == 4 || newData.val() == 5"
           }
         },
+        "energy": {
+          ".write": "auth.uid == root.child('sessions/' + $code + '/meta/hostUid').val()",
+          "$uid": {
+            ".write": "$uid == auth.uid && root.child('sessions/' + $code + '/round/status').val() == 'live' && now < root.child('sessions/' + $code + '/round/startsAt').val() + root.child('sessions/' + $code + '/round/durationMs').val() && root.child('sessions/' + $code + '/players/' + $uid + '/role').val() == 'spectator' && root.child('sessions/' + $code + '/players/' + $uid + '/removed').val() != true",
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100 && newData.val() % 1 == 0"
+          }
+        },
         "results": {
           ".write": "auth.uid == root.child('sessions/' + $code + '/meta/hostUid').val()",
           "judgeRequestedAt": {

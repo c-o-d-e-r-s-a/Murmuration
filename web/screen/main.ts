@@ -3,7 +3,7 @@ import { RATING_MAX_MS, ROLES, SETTLE_MS, SNAPSHOT_H, SNAPSHOT_JPEG_QUALITY, SNA
 import type { Choices, JudgeRoundRequest, JudgeRoundResponse, Player, Results, Role, Round } from "../../shared/contracts";
 import { BUNDLED_SCENES } from "../../shared/sceneLoader";
 import { db, functions, httpsCallable, onValue, ref, runTransaction, serverNow, serverTimestamp, signIn } from "../lib/firebase";
-import { resolveTarget } from "../lib/renderer/params";
+import { applyEnergy, resolveTarget } from "../lib/renderer/params";
 import { mountRenderer } from "../lib/renderer/sketch";
 
 // B5: passive /screen (D-10). Subscribes, renders the colour wash from choices, shows lobby/live/lock/reveal chrome.
@@ -38,6 +38,7 @@ async function start() {
   let choices: Choices = {};
   let players: Record<string, Player> = {};
   let results: Results = {};
+  let energy: Record<string, number> = {}; // P2 spectator dial; only ever feeds the target, which the renderer eases
   let seenRender = false; // first render already in reveal (refresh): show final scores, no catch-up animation
   const shown = new Map<string, number | null>(); // `${round}:${key}` -> value already counted up
   let mounted: (ReturnType<typeof mountRenderer> & { key: string }) | null = null;
@@ -169,9 +170,15 @@ async function start() {
   };
   setInterval(tick, 100);
 
+  const targetFor = (scene: (typeof BUNDLED_SCENES)[number]) => {
+    const lobby = round!.status === "lobby";
+    const t = resolveTarget(scene.options, lobby ? undefined : choices);
+    return lobby ? t : applyEnergy(t, energy);
+  };
+
   function render() {
     // Wait for every listener once, so a refreshed screen's first target is the real one (no catch-up animation).
-    if (loaded.size < 4 || !round) return;
+    if (loaded.size < 5 || !round) return;
     const scene = BUNDLED_SCENES.find((s) => s.id === round!.sceneId);
     if (!scene) return void ($("#msg").textContent = `unknown scene ${round.sceneId}`);
     $("#msg").textContent = "";
@@ -185,7 +192,7 @@ async function start() {
       mounted = { key, ...mountRenderer($("#stage"), { background: scene.baseArt.background, baseArt: scene.baseArt, seed: round.seed, clock }) };
       if (phase === "locked") capture(mounted);
     }
-    mounted.setTarget(resolveTarget(scene.options, status === "lobby" ? undefined : choices));
+    mounted.setTarget(targetFor(scene));
     ui.dataset.s = status;
 
     const people = Object.values(players).filter((p) => !p.removed);
@@ -291,4 +298,12 @@ async function start() {
   sub<Choices>("choices", (v) => (choices = v ?? {}));
   sub<Record<string, Player>>("players", (v) => (players = v ?? {}));
   sub<Results>("results", (v) => (results = v ?? {}));
+  // Energy changes only re-target the renderer (no chrome re-render); the first value gates the first render like the others.
+  onValue(ref(db, `${base}/energy`), (s) => {
+    energy = s.val() ?? {};
+    const scene = BUNDLED_SCENES.find((x) => x.id === round?.sceneId);
+    if (loaded.has("energy") && mounted && scene) return mounted.setTarget(targetFor(scene));
+    loaded.add("energy");
+    render();
+  });
 }
