@@ -10,7 +10,7 @@ Scope: UI chrome on `/screen`, `/play`, `/host`, `/replay`; the lock-and-reveal;
 
 **A dark gallery wall with one warm lamp.** The chrome is near-black and recedes; the shared artwork is the only large bright thing in the room. One warm "sodium" accent (the color of Atlanta streetlights) carries every action and the timer. Type is big, wide, and warm off-white. Motion is slow and eased during the round, hushes at lock, then turns game-show for exactly four beats (three scores and a combined number) before settling back. Sound is sparse analog synth plus one physical "thunk". The name is carried by a flock of small dots, reusing the particle system we already have.
 
-Settled taste choices (owner, this session): dark gallery chrome · one sodium accent + five muted role hues (badges only) · Bricolage Grotesque + Instrument Sans · cinematic lock, punchy scores · minimal analog SFX · flat 12/16 px surfaces with hairlines · flock-of-dots motif · huge faint mood-word watermark.
+Settled taste choices (owner, this session): dark gallery chrome · one sodium accent + three muted role hues (badges only: palette, form, motion) · Bricolage Grotesque + Instrument Sans · cinematic lock, punchy scores · minimal analog SFX · flat 12/16 px surfaces with hairlines · flock-of-dots motif · huge faint mood-word watermark.
 
 ---
 
@@ -106,8 +106,8 @@ Reference 390 px wide. Minimum **14 px**. Host page uses the same scale; it is a
 
 - **Grid:** 4 px base; allowed steps `4 8 12 16 24 32 48 64 96`. Screen uses the upper half (24+), phone the lower half (8–32).
 - **Safe area (screen):** 5% on every edge (96 px left/right, 54 px top/bottom at 1080p). Nothing textual crosses it. The canvas itself fills the full viewport; only chrome respects the safe area. All `/screen` px values in this file are at 1080p; implement them in `vw`/`vh` so a 1280×720 laptop viewport keeps the same composition.
-- **Screen layout, live:** canvas full-bleed. Top bar `surface-1` at 72% opacity, 112 px tall: prompt left (max 60% width), countdown right. Bottom strip 96 px: up to five dial badges, left-aligned, 24 px gaps; Spectator count far right. That is the whole live UI.
-- **Screen layout, lobby:** left card 40% width: QR (≥ 52vh, i.e. 560 px at 1080p; white quiet zone 32 px, `ink-0` modules on `#F4EFE6`), session code below it at `--fs-screen-h2`, URL at `--fs-screen-body`. Right 60%: wordmark, scene title, "Creators 3/5 joined", nick list, flock drifting behind at low opacity.
+- **Screen layout, live:** canvas full-bleed. Top bar `surface-1` at 72% opacity, 112 px tall: prompt left (max 60% width), countdown right. Bottom strip 96 px: up to three dial badges, left-aligned, 24 px gaps; Spectator count far right. That is the whole live UI.
+- **Screen layout, lobby:** left card 40% width: QR (≥ 52vh, i.e. 560 px at 1080p; white quiet zone 32 px, `ink-0` modules on `#F4EFE6`), session code below it at `--fs-screen-h2`, URL at `--fs-screen-body`. Right 60%: wordmark, scene title, "Creators 3/3 joined", nick list, flock drifting behind at low opacity.
 - **Phone layout:** single column, 20 px side padding, content top-aligned; the **primary interaction sits in the bottom 60%** of the viewport (thumb zone). Header: role badge + countdown. Creator: four option buttons stacked, 72 px tall, 12 px gap, full width. Spectator rating: five buttons in one row, each ≥ 64×64, 8 px gap. Minimum touch target anywhere: **56 px**. `navigator.vibrate(30)` on every accepted tap.
 - **Radius:** cards 12 px, phone buttons 16 px, badges pill. Nothing else.
 - **Surfaces:** flat fill + 1 px `--hairline`. No drop shadows, no blur, no inner glow. Elevation is expressed by `surface-1` vs `surface-2` plus the border, not by shadow.
@@ -204,7 +204,7 @@ Times are relative to `lockedAt` (T3) until the rating window, then relative to 
 - If `fallback: true`: same visuals; the canned clip plays. Never show a loading state here.
 
 ### Beat 9 — Credits (when verdict ends, or `reveal` + 25 s, whichever first)
-- Bottom strip returns (`surface-1`, 96 px): up to five dial badges slide in from the left, 120 ms stagger: role dot in role hue, "Priya · Palette · Peach Sunset" in `--fs-screen-label`. Unfilled roles are **omitted**, not shown as empty; three Creators yield three badges, evenly spaced, and it looks deliberate.
+- Bottom strip returns (`surface-1`, 96 px): up to three dial badges slide in from the left, 120 ms stagger: role dot in role hue, "Priya · Palette · Peach Sunset" in `--fs-screen-label`. Unfilled roles are **omitted**, not shown as empty; three Creators yield three badges, evenly spaced, and it looks deliberate.
 - Phones: scores (three + combined) in a stacked list, "Next round soon" caption.
 
 ### Beat 10 — Reimagined (async, only if ready)

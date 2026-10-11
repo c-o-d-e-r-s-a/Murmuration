@@ -57,7 +57,7 @@ Model docs: [models](https://elevenlabs.io/docs/models). Latency barely matters 
 Verify (same PowerShell session; writes `test.mp3`, under 10 s):
 
 ```powershell
-$body = @{ text = "[sarcastic] Oh, wonderful. Five strangers, one canvas, and somehow it looks like a screensaver had a bad breakup. [laughs] Honestly? I respect the commitment."; model_id = "eleven_v4_turbo" } | ConvertTo-Json
+$body = @{ text = "[sarcastic] Oh, wonderful. Three strangers, one canvas, and somehow it looks like a screensaver had a bad breakup. [laughs] Honestly? I respect the commitment."; model_id = "eleven_v4_turbo" } | ConvertTo-Json
 Measure-Command { Invoke-RestMethod -Method Post -Uri "https://api.elevenlabs.io/v1/text-to-speech/3IwIPyXc0WRkgKBE8KXP?output_format=mp3_44100_64" -Headers @{ "xi-api-key" = $k } -ContentType "application/json" -Body $body -OutFile test.mp3 }
 ```
 

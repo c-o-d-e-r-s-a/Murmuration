@@ -269,7 +269,7 @@ CREATE TABLE rounds (
   scene_id     text        NOT NULL,
   prompt_id    text,
   duration_ms  integer     NOT NULL,
-  creators     smallint    NOT NULL,      -- filled slots (3-5)
+  creators     smallint    NOT NULL,      -- filled slots (up to 3)
   author       numeric(4,1),
   ai           numeric(4,1),
   audience     numeric(4,1),

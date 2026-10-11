@@ -1,6 +1,6 @@
 # AGENTS.md — Murmuration
 
-Live cooperative art game for a 36-hour hackathon. Phones scan a QR; up to 5 **Creators** each own one dial (palette, form, motion, texture, mood) of ONE shared artwork on the big screen; everyone else is a **Spectator** and rates. Three judges: Scene Author taste, AI (Gemini), audience.
+Live cooperative art game for a 36-hour hackathon. Phones scan a QR; up to 3 **Creators** each own one dial (palette, form, motion) of ONE shared artwork on the big screen; everyone else is a **Spectator** and rates. Three judges: Scene Author taste, AI (Gemini), audience.
 
 Source of truth: [brief](docs/00-brief.md) (what/why) · [DECISIONS](docs/DECISIONS.md) (D-nn, settled) · [ARCHITECTURE](docs/ARCHITECTURE.md) · [ROUND_STATE_MACHINE](docs/ROUND_STATE_MACHINE.md) · [CONTRACTS](docs/CONTRACTS.md) · [DATA_SCHEMA](docs/DATA_SCHEMA.md) · [RISKS](docs/RISKS.md) · [BUILD_ORDER](docs/BUILD_ORDER.md). If code and docs disagree, update DECISIONS first. Don't duplicate docs here.
 

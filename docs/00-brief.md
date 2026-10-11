@@ -16,10 +16,10 @@ We are building this at a **36-hour hackathon** (Hacklanta, Atlanta, Creative tr
 
 ## 2. Concept in one paragraph
 
-A live, in-person, cooperative art game. A host shows a QR code on their laptop screen. People scan it with their phones (no app, no account). The first few joiners become **Creators**, each owning **one dial** of a **single shared artwork** (palette, form, motion, texture, mood word). Everyone else is a **Spectator**. A task prompt appears, a 1–2 minute timer runs, and as Creators change their choices the shared canvas on the laptop screen evolves live and smoothly. When time hits zero the piece locks and is revealed. Three "judges" score it: the **Scene Author's taste**, an **AI judge**, and the **Audience**. The AI judge speaks a short verdict out loud.
+A live, in-person, cooperative art game. A host shows a QR code on their laptop screen. People scan it with their phones (no app, no account). The first few joiners become **Creators**, each owning **one dial** of a **single shared artwork** (palette, form, or motion; texture and mood stay on fixed neutrals in the solo plan). Everyone else is a **Spectator**. A task prompt appears, a 1–2 minute timer runs, and as Creators change their choices the shared canvas on the laptop screen evolves live and smoothly. When time hits zero the piece locks and is revealed. Three "judges" score it: the **Scene Author's taste**, an **AI judge**, and the **Audience**. The AI judge speaks a short verdict out loud.
 
 **Terminology (keep these distinct everywhere):**
-- **Creators:** the up-to-5 players who each control one dial during a round.
+- **Creators:** the up-to-3 players who each control one dial during a round.
 - **Spectators:** everyone else in the room; they rate the result.
 - **Scene Author:** the person who made a scene (for the demo, our team; later, any user).
 - **Host:** the person running the session from the laptop.
@@ -35,7 +35,7 @@ A live, in-person, cooperative art game. A host shows a QR code on their laptop 
 
 **Design consequences of the icebreaker pitch:**
 - **Optional nickname at join** (no account). Show who owns which dial on the big screen, and **credit each person at the reveal** ("Priya's Grid, Sam's Flicker, ..."). Nicknames appear on the shared screen, so filter them (blocklist plus length limit) and let the host rename or remove.
-- **Role rotation across rounds.** With 30 people and 5 Creator slots, 25 would be watching, which contradicts the pitch. Each new round rotates previous Spectators into the Creator slots (queue order), so a short session gets everyone a turn.
+- **Role rotation across rounds.** With 30 people and 3 Creator slots, most of the room would be watching, which contradicts the pitch. Each new round rotates previous Spectators into the Creator slots (queue order), so a short session gets everyone a turn.
 - **Spectators still contribute** by rating each round (and, as a stretch, nudging a shared "energy" dial).
 
 **Prior-art awareness (for internal consistency, not for the README):** crowd-driven generative art is an old genre in installation art; Gartic Phone/Drawception are sequential drawing chains; r/place and whiteboards give everyone the same direct control; Artbitrator-style AI judging is individual and competitive; QR-join with phone-as-controller is common (Jackbox-style). Our difference: **simultaneous, cooperative, one bounded role per person on one shared artwork.** Pitch line: *"Every game like this gives each player their own canvas. Ours gives each player one dial on the same canvas."*
@@ -65,10 +65,10 @@ Final scene names and jokes can be changed by the team; the structure is what ma
 
 ### Two layers per scene
 - **Layer A: base composition (fixed):** minimal silhouettes and line shapes. Keep it minimal so the room's choices do most of the visible work.
-- **Layer B: live layer (controlled by Creators):** color wash (palette), an atmosphere/particle system acting as fog, steam, sparks, or dust around the fixed shapes (form), hotspot animation (motion), grain overlay (texture), and a faint mood-word watermark plus energy nudge (mood).
+- **Layer B: live layer (controlled by Creators):** color wash (palette), an atmosphere/particle system acting as fog, steam, sparks, or dust around the fixed shapes (form), and motion. Texture (grain) and mood-word watermark stay on fixed neutral presets in the solo plan.
 
 ### Options: per scene, evocative, never neutral
-Each scene defines its own 4 options per role, with labels that carry meaning for that scene (for example, the diner's palette might be *Fluorescent Sodium / Grease-Stained Gold / Midnight Neon / Muted Dust*; rush hour's might be *Brake-Light Red / Highway Sodium / Peach Sunset / Midnight Connector*). Roles: **palette, form, motion, texture, mood word.** One choice per role; richness comes from one decision governing hundreds of visual elements.
+Each scene defines its own 4 options per assignable role, with labels that carry meaning for that scene (for example, the diner's palette might be *Fluorescent Sodium / Grease-Stained Gold / Midnight Neon / Muted Dust*; rush hour's might be *Brake-Light Red / Highway Sodium / Peach Sunset / Midnight Connector*). Assignable roles: **palette, form, motion.** One choice per role; richness comes from one decision governing hundreds of visual elements.
 
 ### How prompts work (important to get right)
 There are two different things. **Options** are what Creators pick from. **Task prompts** are the challenge shown on screen ("Make the gridlock feel almost peaceful"). The **host chooses the scene**; the game then **randomly draws a task prompt from that scene's own list** (no repeats until the list is used up; an optional reroll button for the host). Prompts are drafted ahead of time (AI-assisted), hand-reviewed, and stored with the scene. **Never generated live.** Prompt formats should vary: single evocative word, tension pairs ("calm but urgent"), constraints ("joyful, without red"), sensory framing, and plenty of Atlanta humor. Every prompt must be expressible with that scene's option vocabulary.
@@ -80,9 +80,9 @@ Any flicker option must stay below about 3 flashes per second with no hard full-
 
 ## 5. Roles and joining
 
-- **Creator slots: up to 5.** Priority if fewer join: palette, form, motion first; texture and mood word are bonus. A round must run cleanly with 3.
+- **Creator slots: up to 3** (palette, form, motion). Texture and mood stay on fixed neutrals (solo plan, BUILD_ORDER §8). A round needs all 3 slots filled (bots count).
 - **Host controls:** choose scene, start/reset round, reroll the prompt, manually assign a joining phone to a Creator slot, rename/remove a nickname, one-tap new round with rotation.
-- **Waiting room is visible:** "Creators 3/5 joined. You're a Spectator, get ready to rate."
+- **Waiting room is visible:** "Creators 3/3 joined. You're a Spectator, get ready to rate."
 - **Soft undo only:** a Creator can change their own choice until the timer ends; the canvas cannot be rewound; at zero it locks irreversibly.
 - **No participant accounts.** Anonymous auth only.
 
@@ -165,7 +165,7 @@ Goal: let any user make a scene without logging in, and play it. This is the "pl
 ## 12. Demo mode and dev harness
 
 - **Demo mode:** simulated Creators and Spectators fill the roles so one person with one phone can run a complete round without a crowd, with the static narration guiding them.
-- **Dev harness (`/dev`):** manual sliders for every parameter plus a "simulate crowd" bot that fakes bursts. Used to tune look and smoothing without five phones; may double as demo mode.
+- **Dev harness (`/dev`):** manual sliders for every parameter plus a "simulate crowd" bot that fakes bursts. Used to tune look and smoothing without three phones; may double as demo mode.
 
 ---
 

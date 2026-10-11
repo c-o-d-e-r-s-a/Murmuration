@@ -6,9 +6,9 @@
 ## 1. Shared constants
 
 ```ts
-export const ROLES = ["palette", "form", "motion", "texture", "mood"] as const;   // also the fill priority
+export const ROLES = ["palette", "form", "motion", "texture", "mood"] as const;   // schema + fill priority; solo assigns only the first 3
 export const MIN_CREATORS = 3;
-export const MAX_CREATORS = 5;
+export const MAX_CREATORS = 3; // solo plan: palette/form/motion only (texture/mood stay neutral)
 export const OPTIONS_PER_ROLE = 4;
 export const AUTHOR_RANK_SCORES = [10, 7, 4, 1] as const;
 

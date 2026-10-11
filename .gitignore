@@ -12,6 +12,9 @@ functions/lib/
 service-account*.json
 *.local
 
+# one-shot generator output (upload to Storage separately)
+functions/scripts/out/
+
 # firebase
 .firebase/
 firebase-debug.log*

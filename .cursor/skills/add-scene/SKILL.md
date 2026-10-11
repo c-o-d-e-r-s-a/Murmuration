@@ -9,7 +9,7 @@ Schema: [DATA_SCHEMA](../../../docs/DATA_SCHEMA.md). Concept and the three demo 
 
 1. Copy an existing `shared/scenes/*.json` as the template. Set `id`, `title`, `author`.
 2. `baseArt`: minimal SVG `d` paths (generic silhouettes; no brand logos or trademarked characters).
-3. `options`: exactly 4 per role (palette, form, motion, texture, mood). Each `{id, presetId, label, authorScore}` with evocative, scene-specific labels. Use presets only; overrides/hotspots are demo-scene only and must not set flicker rate.
+3. `options`: exactly 4 per role. Solo plan: palette/form/motion use non-neutral presets (one each of the 4 ranks); texture/mood stay on the neutral preset only. Each `{id, presetId, label, authorScore}` with evocative, scene-specific labels. Use presets only; overrides/hotspots are demo-scene only and must not set flicker rate.
 4. `authorScore`: a ranking mapped to 10 / 7 / 4 / 1, each used once per role.
 5. `prompts`: 8–10 varied prompts (single word, tension pair, constraint, sensory, Atlanta humor), each expressible with this scene's options. Never generated live.
 6. Register the scene where the loader/host picker lists bundled scenes.
