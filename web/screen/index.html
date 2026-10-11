@@ -57,8 +57,11 @@
       .qr { background: #f4efe6; padding: 1.667vw; }
       .qr canvas { display: block; }
       .code { font: 700 var(--fs-h2)/1 var(--display); letter-spacing: 0.12em; }
-      .lobby-info { left: 45vw; right: 5vw; top: 5vh; bottom: 5vh; padding: 0 2.5vw; display: flex; flex-direction: column; justify-content: center; gap: 1.667vw; }
-      .wordmark { font: 700 clamp(72px, 6.25vw, 168px)/1 var(--display); }
+      .lobby-info { left: 45vw; right: 5vw; top: 5vh; bottom: 5vh; padding: 0 2.5vw; display: flex; flex-direction: column; justify-content: center; gap: 1.667vw; overflow: hidden; }
+      .lobby-info > * { position: relative; }
+      /* §8 flock: drifts behind the right column in the lobby only; drawing stops outside lobby (never over live art) */
+      .lobby-info > .flock { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+      .wordmark { font: 800 clamp(72px, 6.25vw, 168px)/1 var(--display); font-stretch: 90%; letter-spacing: -0.03em; }
       .dials { display: flex; flex-direction: column; gap: 0.833vw; }
       .dial, .badge { display: flex; align-items: center; gap: 0.833vw; }
       .dot { width: 1.3vw; height: 1.3vw; border-radius: 50%; flex: none; }
@@ -160,6 +163,7 @@
         <div class="url"></div>
       </div>
       <div class="lobby lobby-info panel">
+        <canvas class="flock" aria-hidden="true"></canvas>
         <div class="wordmark">Murmuration</div>
         <div class="scene-title small"></div>
         <div class="joined"></div>

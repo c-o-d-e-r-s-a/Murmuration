@@ -3,6 +3,7 @@ import { RATING_MAX_MS, ROLES, SETTLE_MS, SNAPSHOT_H, SNAPSHOT_JPEG_QUALITY, SNA
 import type { Choices, JudgeRoundRequest, JudgeRoundResponse, Player, Results, Role, Round } from "../../shared/contracts";
 import { BUNDLED_SCENES } from "../../shared/sceneLoader";
 import { db, functions, httpsCallable, onValue, ref, runTransaction, serverNow, serverTimestamp, signIn } from "../lib/firebase";
+import { mountFlock } from "../lib/chrome/flock";
 import { applyEnergy, resolveTarget } from "../lib/renderer/params";
 import { mountRenderer } from "../lib/renderer/sketch";
 
@@ -143,6 +144,7 @@ async function start() {
   $(".qr").append(qr);
   $(".code").textContent = code;
   $(".url").textContent = playUrl;
+  mountFlock($<HTMLCanvasElement>(".lobby-info .flock"), { active: () => ui.dataset.s === "lobby" });
 
   const countEl = $(".count");
   const rail = $(".rail");

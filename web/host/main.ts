@@ -73,6 +73,7 @@ async function start() {
 function mount(code: string) {
   const base = `sessions/${code}`;
   const playUrl = `${location.origin}/play/?s=${code}`; // trailing slash: Vite dev 404s "/play"
+  const screenUrl = `${location.origin}/screen/?s=${code}`;
   let round: Round | null = null;
   let players: Record<string, Player> = {};
   let meta: SessionMeta | null = null;
@@ -143,6 +144,11 @@ function mount(code: string) {
         ),
       ),
       el("div", { className: "col" },
+        el("section", { className: "card" },
+          el("div", { className: "caps", textContent: "Big screen" }),
+          // Named target: a second click focuses the same tab instead of opening another renderer.
+          el("button", { className: "primary", textContent: "Open big screen", onclick: () => window.open(screenUrl, `murmuration-screen-${code}`) }),
+          el("p", { className: "hint", textContent: "Fullscreen that tab (F11) on the laptop display; keep this host page in its own window." })),
         el("section", { className: "card session" }, canvas,
           el("div", {}, el("span", { className: "caps", textContent: "Phones join at" }), el("a", { href: playUrl, textContent: playUrl }), newBtn)),
         el("section", { className: "card" }, count, list,

@@ -2,6 +2,7 @@ import { get, push } from "firebase/database";
 import type { Choices, Player, Results, Role, Round } from "../../shared/contracts";
 import { ENERGY_WRITE_THROTTLE_MS, NICK_MAX } from "../../shared/contracts";
 import { BUNDLED_SCENES } from "../../shared/sceneLoader";
+import { mountFlock } from "../lib/chrome/flock";
 import { downloadUrl } from "../lib/download";
 import { db, onValue, ref, serverNow, serverTimestamp, set, signIn, trackPresence, update } from "../lib/firebase";
 import { cleanNick } from "../lib/nick";
@@ -27,6 +28,10 @@ function icon(svg: string, cls = "") {
   return n;
 }
 const SCORES_DELAY_MS = 2600; // phones list scores after the big screen has stamped them (matches /screen credits delay)
+// One node reused by every waiting view, so re-renders move it instead of restarting the drift.
+const flock = el("canvas", { className: "flock" });
+flock.setAttribute("aria-hidden", "true");
+mountFlock(flock, { count: 48 });
 
 const code = (new URLSearchParams(location.search).get("s") ?? "").toUpperCase();
 const base = `sessions/${code}`;
@@ -45,10 +50,13 @@ signIn().then(async (uid) => {
     run(uid);
   } });
   app.replaceChildren(
+    flock,
     el("div", { className: "head" }, el("div", { className: "wordmark", textContent: "Murmuration" }), el("span", { className: "badge", textContent: `Session ${code}` })),
+    el("p", { className: "pitch", textContent: "Three people, three dials, one artwork." }),
     el("p", { textContent: "Pick a nickname, or join without one. The big screen does the rest." }),
     el("div", { className: "actions" }, input, join),
   );
+  app.classList.add("enter");
 }).catch((e) => app.replaceChildren(el("h1", { textContent: "Can't join" }), el("p", { textContent: e.message })));
 
 function run(uid: string) {
@@ -191,11 +199,13 @@ function run(uid: string) {
     }
     if (!role || !scene) {
       const s = round.status;
-      const msg = s === "lobby" ? "Waiting for the round to start." : s === "live" ? "Watch the big screen." : s === "locked" ? "Get ready to rate." : "Look at the big screen.";
+      const flockView = s === "lobby" && !role;
+      const msg = flockView ? "Watching the room. Three Creators turn the dials on the big screen; you rate what they make."
+        : s === "lobby" ? "Waiting for the round to start." : s === "live" ? "Watch the big screen." : s === "locked" ? "Get ready to rate." : "Look at the big screen.";
       // P2 energy dial (D-08): Spectators only, during live.
       const dial = s === "live" && !role ? [energyDial(live && online)] : [];
-      const h = s === "locked" ? head("Locked", icon(LOCK)) : head(role ? `You are the ${capitalize(role)}` : "You're a Spectator");
-      return void show(h, el("p", { textContent: msg }), ...(s === "lobby" ? [el("div", { className: "dots" }, el("i"), el("i"), el("i"))] : []),
+      const h = s === "locked" ? head("Locked", icon(LOCK)) : head(role ? `You are the ${capitalize(role)}` : flockView ? "You're in the flock" : "You're a Spectator");
+      return void show(...(s === "lobby" ? [flock] : []), h, el("p", { textContent: msg }), ...(s === "lobby" ? [el("div", { className: "dots" }, el("i"), el("i"), el("i"))] : []),
         el("div", { className: "actions" }, ...(s === "reveal" ? [scoreList()] : []), ...dial, ...dlButtons(), ...(s === "reveal" ? [nextSoon()] : []),
           ...(s === "lobby" && !role ? [el("p", { className: "hint", textContent: "When the round locks, you rate the artwork here." })] : [])));
     }
@@ -204,7 +214,7 @@ function run(uid: string) {
     const buttons = scene.options[role].map((o) =>
       el("button", { textContent: o.label, disabled: !on, className: o.id === mine ? "on" : "", onclick: () => pick(role, o.id) }));
     const note = lobby ? "Waiting for the round to start." : round.promptText ?? "";
-    show(lobby || live ? head(`You are the ${capitalize(role)}`) : head("Locked", icon(LOCK)), el("p", { className: lobby ? "" : "prompt", textContent: note }),
+    show(...(lobby ? [flock] : []), lobby || live ? head(`You are the ${capitalize(role)}`) : head("Locked", icon(LOCK)), el("p", { className: lobby ? "" : "prompt", textContent: note }),
       ...(lobby
         ? [el("div", { className: "dots" }, el("i"), el("i"), el("i")), el("div", { className: "actions" }, el("p", { className: "hint", textContent: "Your four options appear here when the round starts." }))]
         : [el("div", { className: "actions" }, ...buttons)]));
