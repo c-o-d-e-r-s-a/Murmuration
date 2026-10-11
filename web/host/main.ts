@@ -1,11 +1,12 @@
 import { get, push } from "firebase/database";
 import QRCode from "qrcode";
 import {
-  DEFAULT_DURATION_MS, DURATIONS_MS, HOST_TICK_MS, MIN_CREATORS, NICK_MAX, NICK_MIN, RATING_EXTEND_STEP_MS, RATING_MIN_MS,
+  DEFAULT_DURATION_MS, DURATIONS_MS, HOST_TICK_MS, MIN_CREATORS, NICK_MAX, NICK_MIN, PULSE_POLL_MS, RATING_EXTEND_STEP_MS, RATING_MIN_MS,
   SESSION_CODE_ALPHABET, SESSION_CODE_LEN,
 } from "../../shared/contracts";
 import type {
   Choices, LogRoundEventsRequest, LogRoundEventsResponse, Player, Rating, ReimagineRoundRequest, ReimagineRoundResponse, Results, Role, Round, Scene, SessionMeta,
+  SessionPulseRequest, SessionPulseResponse,
 } from "../../shared/contracts";
 import { BUNDLED_SCENES } from "../../shared/sceneLoader";
 import { audienceScore, authorScore, combined } from "../../shared/scoring";
@@ -90,6 +91,8 @@ function mount(code: string) {
   const list = el("div");
   const count = el("div");
 
+  const pulseEl = el("div");
+
   const newBtn = el("button", { textContent: "New session", onclick: () => {
     if (!confirm("Start a brand new session? Phones on the old code are orphaned.")) return;
     localStorage.removeItem(CODE_KEY);
@@ -119,6 +122,7 @@ function mount(code: string) {
     el("p", {}, el("button", { textContent: "Add 3 bots", onclick: () => addBots(3) }), " ", el("button", { textContent: "Add 10 spectator bots", onclick: () => addBots(10, true) }), " ", newBtn),
     count,
     list,
+    pulseEl,
   );
 
   const scene = () => BUNDLED_SCENES.find((s) => s.id === round?.sceneId);
@@ -246,6 +250,46 @@ function mount(code: string) {
       .then((r) => { if (!r.data.ok) tigerRetry.add(roundId); })
       .catch((e) => { tigerRetry.add(roundId); console.warn("logRoundEvents", e); });
   }
+
+  /** Session pulse (P1-10, D-33): host-only analytics; polled, never blocks the round. Any failure = stale, keep last good payload. */
+  let pulse: SessionPulseResponse | null = null;
+  let pulseStale = false;
+  const optionLabel = (role: Role, id: string) => BUNDLED_SCENES.flatMap((s) => s.options[role]).find((o) => o.id === id)?.label ?? id;
+  function renderPulse() {
+    const rows = SLOT_ROLES.map((role) => {
+      const bs = (pulse?.buckets ?? []).filter((b) => b.role === role).sort((a, b) => a.t.localeCompare(b.t)).slice(-30);
+      const max = Math.max(1, ...bs.map((b) => b.n));
+      const bars = el("span", {});
+      bars.style.cssText = "display:inline-flex;align-items:flex-end;gap:1px;height:24px;width:120px;vertical-align:middle";
+      for (const b of bs) {
+        const bar = el("span", { title: `${b.t}: ${b.n}` });
+        bar.style.cssText = `width:3px;background:#69c;height:${Math.max(2, Math.round((b.n / max) * 24))}px`;
+        bars.append(bar);
+      }
+      const top = pulse?.topOptions[role];
+      return el("div", {}, `${role} `, bars, ` top: ${top ? `${optionLabel(role, top.optionId)} (${top.n})` : "–"}`);
+    });
+    const r = pulse?.rounds;
+    const badge = el("span", { textContent: " stale" });
+    badge.style.cssText = "background:#c33;color:#fff;padding:0 6px;border-radius:4px;font-size:12px";
+    badge.hidden = !pulseStale;
+    pulseEl.replaceChildren(
+      el("h3", {}, "Session pulse (host only) ", badge),
+      ...rows,
+      el("div", { textContent: `Rounds played ${r?.played ?? "–"} · avg combined ${fmt(r?.avgCombined)}` }),
+    );
+  }
+  function pollPulse() {
+    httpsCallable<SessionPulseRequest, SessionPulseResponse>(functions, "sessionPulse")({ sessionCode: code })
+      .then((r) => {
+        pulseStale = r.data.stale;
+        if (!r.data.stale) pulse = r.data;
+      })
+      .catch((e) => { pulseStale = true; console.warn("sessionPulse", e); })
+      .finally(renderPulse);
+  }
+  pollPulse(); // first render happens when it settles (fmt below is a const, not yet initialised here)
+  setInterval(pollPulse, PULSE_POLL_MS); // page-lifetime; no teardown on /host
 
   // Bots (D-29): first pick at ~5 s, then 1–2 changes. lastT skips picks already past when the host reloads mid-round.
   const botPlans = new Map<Role, number[]>();
