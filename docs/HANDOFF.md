@@ -1,29 +1,27 @@
 # HANDOFF
 
 ## Done this session
-- **P1-7 part 2, /screen panel** ([BUILD_ORDER](BUILD_ORDER.md) §4): `web/screen/main.ts` `syncReimagined(url)` + `web/screen/index.html` (`.reimagined`, `.rx` CSS). In reveal, when `results.reimagined.status==="ready" && url`, the image is preloaded. On load, the stage eases from scale 0.6 to 0.3 (transform only) and the image fades in beside it over 900 ms, with a small-caps "Reimagined with Gemini" tag (D-43). Absent, pending, failed, skipped or an image load error change nothing: no placeholder, no spinner. Passive, no writes. Verdict transcript removed from `/screen` (audio + Play stay).
-- Earlier (carried, not committed): P1-7 part 1 backend (`functions/src/reimagineRound.ts`, host call in `web/host/main.ts`), P1-6, P1-8 code, P1-4, P1-2.
+- **P1-10 part 1, `sessionPulse` callable** ([BUILD_ORDER](BUILD_ORDER.md) §4, lane B): `functions/src/sessionPulse.ts` (exported in `functions/src/index.ts`) + self-check `functions/src/sessionPulse.test.ts`. Host-only (uid must equal `meta.hostUid`); a bad code throws `invalid-argument`. If `tigerEnabled` is off, or a Tiger error or timeout happens, or the RTDB read fails, it returns `stalePulse()` (`stale:true`, empty payload). Otherwise one SQL statement does all three DATA_SCHEMA §8 reads (last 15 min of `choices_10s`, `DISTINCT ON (role)` top option with ties broken by `option_id`, and the `rounds` count/avg/max). A `Promise.race` deadline caps the call at `TIGER_TIMEOUT_MS`. Read-only: no RTDB writes.
+- Earlier (carried, not committed): P1-7 parts 1–2, P1-6, P1-8 code, P1-4, P1-2, P1-9.
 
 ## In progress / next
-- **P1-7 manual check** (deploy functions + hosting; bot round with `reimagineEnabled` true, then false). Steps are in the session report.
-- Prompt tuning on a real snapshot.
-- Still open: P1-6 manual check, P1-8 clips (need the ElevenLabs key).
+- **P1-10 manual check** (deploy functions; bot round to reveal; call from the host console; flip `tigerEnabled`). Steps are in the session report.
+- **P1-10 part 2 (C2):** pulse panel in `web/host/main.ts`. Poll every `PULSE_POLL_MS` only while the panel is open, keep the last good payload, and show a "stale" badge on `stale:true` or a thrown error.
+- Still open: P1-7 / P1-6 manual checks, P1-8 clips (ElevenLabs key).
 
 ## Verify status
-- typecheck pass · lint pass · `npm test` pass · build pass (same chunk-size warning). Panel not eyeballed in a browser, because no real `ready` url was available.
+- typecheck pass · lint pass · `npm test` pass · build pass (same chunk-size warning) · `functions` tsc pass.
+- Live self-check `npx tsx --env-file=functions/.secret.local functions/src/sessionPulse.test.ts` passes: real buckets, top options and rounds after `mirrorRound`; a bogus host goes stale in about 5017 ms; SELFTEST rows are cleaned up.
 
 ## Decisions / docs
-- **D-43:** `/screen` verdict is voice-only (no transcript); Reimagined chip reads "Reimagined with Gemini". Art-direction §3/§6 Beats 8–10/§10 updated.
-- **Layout choice, not a D-nn:** Beat 10's 50/50 fights the scoreboard; artwork scales to 0.3, image at 33–59vw left of the board.
-- "Absent" is treated as `skipped` (flag off means the host never calls).
-- Lane: A (`web/screen/`).
+- No new D-nn. ARCHITECTURE says "`{stale:true}` with the host's last cached payload": the function returns an empty payload and the **host** keeps its cache (matches CONTRACTS "payload may be empty").
 
 ## Blockers / open items
-- Gemini image calls need AI Studio Prepay billing (402 makes Reimagined fail and the judge go canned too).
+- Gemini image calls need AI Studio Prepay billing (402 → Reimagined fails, judge goes canned).
 - Carried: ElevenLabs key, hidden-/screen-at-lock gap, `meta.screenUid`, real-phone LAN, custom-domain auth.
 
 ## Gotchas
-- Reveal starts with the board and artwork at 0.6, so the shrink to 0.3 is visible when the image arrives later. This is intended (transform only, no flicker).
-- The image box assumes a 16:9 artwork canvas and a roughly 16:9 viewport. Check at 1280×720.
-- Host refresh in `reveal` means T5 doesn't re-fire, so there is no Reimagined for that round. T6 archives `results` before a late `ready` lands.
-- Verdict transcript is gone from `/screen` (D-43); if Play still sits under the image, nudge `.play-verdict`.
+- `round_events.time` is `startsAt + t_ms`, so buckets only show for rounds started in the last 15 min. Older sessions return `buckets: []` but still return `topOptions` and `rounds`.
+- `npm test` doesn't run the `functions/src/*.test.ts` self-checks; run them by hand with `tsx`.
+- pg prints an `sslmode` SECURITY WARNING; harmless for now (behaves as verify-full).
+- On a deadline hit the losing query keeps its pool client until `query_timeout` (also 5 s); with pool max 2, a fast poller could briefly queue.
