@@ -83,17 +83,17 @@ function mount(code: string) {
   let busy = false;
 
   const canvas = el("canvas");
-  QRCode.toCanvas(canvas, playUrl, { width: 240 });
+  QRCode.toCanvas(canvas, playUrl, { width: 240, color: { dark: "#0b0b0f", light: "#f4efe6" } });
   const sceneSel = el("select", { onchange: () => {
     const scene = BUNDLED_SCENES.find((s) => s.id === sceneSel.value)!;
     write({ "meta/sceneId": scene.id, "round/sceneId": scene.id, "round/promptId": null, "round/promptText": null, ...promptPaths(scene, meta?.usedPromptIds, null) });
   } }, ...BUNDLED_SCENES.map((s) => el("option", { value: s.id, textContent: s.title })));
   const durSel = el("select", { onchange: () => update(ref(db, `${base}/round`), { durationMs: Number(durSel.value) }) },
     ...DURATIONS_MS.map((d) => el("option", { value: String(d), textContent: `${d / 1000} s` })));
-  const list = el("div");
-  const count = el("div");
+  const list = el("div", { className: "players" });
+  const count = el("div", { className: "caps" });
 
-  const pulseEl = el("div");
+  const pulseEl = el("section", { className: "card pulse" });
 
   const newBtn = el("button", { textContent: "New session", onclick: () => {
     if (!confirm("Start a brand new session? Phones on the old code are orphaned.")) return;
@@ -101,14 +101,15 @@ function mount(code: string) {
     location.href = location.pathname;
   } });
 
-  const statusEl = el("h2");
-  const promptEl = el("span");
-  const scoresEl = el("div");
-  const errEl = el("div");
-  errEl.style.color = "#c33";
-  const startBtn = el("button", { textContent: "Start", onclick: () => startRound() });
+  const roundEl = el("span", { className: "caps" });
+  const stateEl = el("h2", { className: "status" });
+  const timeEl = el("span", { className: "time" });
+  const promptEl = el("div", { className: "prompt" });
+  const scoresEl = el("div", { className: "scores" });
+  const errEl = el("div", { className: "err" });
+  const startBtn = el("button", { className: "primary", textContent: "Start", onclick: () => startRound() });
   const rerollBtn = el("button", { textContent: "Reroll prompt", onclick: () => reroll() });
-  const nextBtn = el("button", { textContent: "New round", onclick: () => newRound() });
+  const nextBtn = el("button", { className: "primary", textContent: "New round", onclick: () => newRound() });
   const resetBtn = el("button", { textContent: "Reset round", onclick: () => reset() });
   const posterBtn = el("button", { textContent: "Download poster", onclick: () => poster() });
   // P2-4: static pre-made walkthrough (genNarration.ts); plain click-to-play, no TTS call.
@@ -123,21 +124,35 @@ function mount(code: string) {
     if (results.reimagined?.url && round) downloadUrl(results.reimagined.url, `murmuration-${code}-${round.id}-gemini.png`);
   } });
 
-  app.replaceChildren(
-    el("h1", { textContent: `Host — ${code}` }),
-    canvas,
-    el("div", {}, el("a", { href: playUrl, textContent: playUrl })),
-    el("p", {}, "Scene ", sceneSel, " Duration ", durSel),
-    statusEl,
-    el("p", {}, "Prompt: ", promptEl, " ", rerollBtn),
-    el("p", {}, startBtn, " ", nextBtn, " ", resetBtn, " ", posterBtn, " ", reimBtn, " ", narrBtn),
-    scoresEl,
-    errEl,
-    el("p", {}, el("button", { textContent: "Add 3 bots", onclick: () => addBots(3) }), " ", el("button", { textContent: "Add 10 spectator bots", onclick: () => addBots(10, true) }), " ", newBtn),
-    count,
-    list,
-    pulseEl,
-  );
+  const labelled = (text: string, ctl: Node) => el("label", { className: "f" }, el("span", { className: "caps", textContent: text }), ctl);
+  app.replaceChildren(el("div", { className: "host" },
+    el("header", { className: "top" },
+      el("div", {}, el("span", { className: "caps", textContent: "Session" }), el("h1", { className: "code", textContent: code })),
+      el("div", {}, roundEl, el("div", { className: "line" }, stateEl, timeEl)),
+      el("span", { className: "wordmark", textContent: "Murmuration" }),
+    ),
+    el("div", { className: "cols" },
+      el("div", { className: "col" },
+        el("section", { className: "card" },
+          el("div", { className: "caps", textContent: "Prompt" }),
+          el("div", { className: "row" }, promptEl, rerollBtn),
+          el("div", { className: "pair" }, labelled("Scene", sceneSel), labelled("Duration", durSel)),
+          el("div", { className: "actions" }, startBtn, nextBtn, resetBtn, posterBtn, reimBtn, narrBtn),
+          scoresEl,
+          errEl,
+        ),
+      ),
+      el("div", { className: "col" },
+        el("section", { className: "card session" }, canvas,
+          el("div", {}, el("span", { className: "caps", textContent: "Phones join at" }), el("a", { href: playUrl, textContent: playUrl }), newBtn)),
+        el("section", { className: "card" }, count, list,
+          el("div", { className: "row tools" },
+            el("button", { textContent: "Add 3 bots", onclick: () => addBots(3) }),
+            el("button", { textContent: "Add 10 spectator bots", onclick: () => addBots(10, true) }))),
+        pulseEl,
+      ),
+    ),
+  ));
 
   const scene = () => BUNDLED_SCENES.find((s) => s.id === round?.sceneId);
   const filled = () => SLOT_ROLES.filter((r) => round?.slots?.[r]).length;
@@ -285,24 +300,22 @@ function mount(code: string) {
     const rows = SLOT_ROLES.map((role) => {
       const bs = (pulse?.buckets ?? []).filter((b) => b.role === role).sort((a, b) => a.t.localeCompare(b.t)).slice(-30);
       const max = Math.max(1, ...bs.map((b) => b.n));
-      const bars = el("span", {});
-      bars.style.cssText = "display:inline-flex;align-items:flex-end;gap:1px;height:24px;width:120px;vertical-align:middle";
+      const bars = el("span", { className: "bars" });
       for (const b of bs) {
-        const bar = el("span", { title: `${b.t}: ${b.n}` });
-        bar.style.cssText = `width:3px;background:#69c;height:${Math.max(2, Math.round((b.n / max) * 24))}px`;
+        const bar = el("i", { title: `${b.t}: ${b.n}` });
+        bar.style.height = `${Math.max(2, Math.round((b.n / max) * 24))}px`;
         bars.append(bar);
       }
       const top = pulse?.topOptions[role];
-      return el("div", {}, `${role} `, bars, ` top: ${top ? `${optionLabel(role, top.optionId)} (${top.n})` : "–"}`);
+      return el("div", { className: "r" }, el("span", { textContent: role }), bars, el("span", { textContent: `top: ${top ? `${optionLabel(role, top.optionId)} (${top.n})` : "–"}` }));
     });
     const r = pulse?.rounds;
-    const badge = el("span", { textContent: " stale" });
-    badge.style.cssText = "background:#c33;color:#fff;padding:0 6px;border-radius:4px;font-size:12px";
+    const badge = el("span", { className: "stale", textContent: "stale" });
     badge.hidden = !pulseStale;
     pulseEl.replaceChildren(
-      el("h3", {}, "Session pulse (host only) ", badge),
+      el("h3", { className: "caps" }, "Session pulse (host only)", badge),
       ...rows,
-      el("div", { textContent: `Rounds played ${r?.played ?? "–"} · avg combined ${fmt(r?.avgCombined)}` }),
+      el("div", { className: "hint", textContent: `Rounds played ${r?.played ?? "–"} · avg combined ${fmt(r?.avgCombined)}` }),
     );
   }
   function pollPulse() {
@@ -361,9 +374,18 @@ function mount(code: string) {
     if (!round) return;
     const s = round.status;
     const left = s === "live" ? round.startsAt! + round.durationMs - now : s === "rating" ? round.ratingEndsAt! - now : 0;
-    statusEl.textContent = `Round ${round.id} · ${s}${left > 0 ? ` · ${Math.ceil(left / 1000)} s` : ""}`;
+    roundEl.textContent = `Round ${round.id}`;
+    stateEl.textContent = s;
+    stateEl.dataset.status = s;
+    timeEl.textContent = left > 0 ? `${Math.ceil(left / 1000)} s` : "";
+    timeEl.classList.toggle("urgent", s === "live" && left > 0 && left <= 10_000);
     promptEl.textContent = round.promptText ?? "(drawn at start)";
-    scoresEl.textContent = s === "lobby" ? "" : `Author ${fmt(results.author?.score)} · AI ${fmt(results.ai?.score)} · Audience ${fmt(results.audience?.score)} (${results.audience?.count ?? Object.keys(ratings).length} votes) · Combined ${fmt(results.combined)}`;
+    const stat = (label: string, value: string, cls = "") => el("div", { className: `stat ${cls}` }, el("span", { className: "caps", textContent: label }), el("span", { className: "num", textContent: value }));
+    scoresEl.replaceChildren(...(s === "lobby" ? [] : [
+      stat("Author", fmt(results.author?.score)), stat("AI", fmt(results.ai?.score)),
+      stat("Audience", `${fmt(results.audience?.score)}`), stat("Votes", String(results.audience?.count ?? Object.keys(ratings).length)),
+      stat("Combined", fmt(results.combined), "total"),
+    ]));
     rerollBtn.hidden = startBtn.hidden = s !== "lobby";
     startBtn.disabled = filled() < MIN_CREATORS;
     startBtn.title = startBtn.disabled ? `Needs ${MIN_CREATORS} filled slots` : "";
@@ -442,10 +464,10 @@ function mount(code: string) {
         el("option", { value: "", textContent: "Spectator" }),
         ...SLOT_ROLES.map((r) => el("option", { value: r, textContent: r })));
       slot.value = p.slot ?? "";
-      return el("div", {},
-        el("span", { textContent: p.connected ? "● " : "○ ", title: p.connected ? "online" : "offline" }),
-        nick, " ", slot, " ", el("button", { textContent: "Remove", onclick: () => remove(uid) }),
-        p.isBot ? " (bot)" : "");
+      return el("div", { className: "p" },
+        el("span", { className: `dot${p.connected ? " on" : ""}`, title: p.connected ? "online" : "offline" }),
+        nick, slot, el("span", { className: "hint", textContent: p.isBot ? "bot" : "" }),
+        el("button", { textContent: "Remove", onclick: () => remove(uid) }));
     }));
   }
 
